@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magicomation — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9dfc9; --panel:#f4ecda; --panel2:#e6dac0; --ink:#2b241a; --muted:#6f624d;
+  --line:#cdbd9c; --bronze:#8a5a1c; --arcane:#6a3fa8; --danger:#b3372b; --ok:#3c7a3a; --food:#5f8f2a;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#151a17; --panel:#1d2420; --panel2:#252e29; --ink:#e8dcc4; --muted:#a39579;
+    --line:#35403a; --bronze:#d29a4c; --arcane:#b08ae6; --danger:#e8675a; --ok:#86c47f; --food:#9bd35a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151a17; --panel:#1d2420; --panel2:#252e29; --ink:#e8dcc4; --muted:#a39579;
+  --line:#35403a; --bronze:#d29a4c; --arcane:#b08ae6; --danger:#e8675a; --ok:#86c47f; --food:#9bd35a;
+}
+html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0; height:100%; background:var(--bg); color:var(--ink);
+  font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",sans-serif; font-size:15px; line-height:1.4}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible{outline:2px solid var(--arcane); outline-offset:2px}
+h1,h2{font-family:Cinzel,Georgia,serif; margin:0; letter-spacing:.02em}
+
+#app{display:grid; grid-template-rows:auto auto 1fr auto; grid-template-columns:minmax(0,1fr); height:100%; overflow:hidden}
+.top{display:flex; align-items:center; gap:14px; padding:8px 14px; border-bottom:1px solid var(--line); background:var(--panel)}
+.brand{display:flex; align-items:center; gap:10px; flex:1; min-width:0}
+.brand h1{font-size:19px; font-weight:800; color:var(--bronze); white-space:nowrap}
+.brand .sub{margin:0; font-size:12.5px; color:var(--muted)}
+.logo{font-size:24px}
+.status{display:flex; gap:16px}
+.stat{display:flex; flex-direction:column; align-items:flex-end; line-height:1.15}
+.stat .lbl{font-size:12px; color:var(--muted)}
+.stat b{font-size:15px}
+.ctrl{display:flex; gap:6px}
+.ctrl button{min-width:38px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--panel2)}
+
+#stock{display:flex; flex-wrap:wrap; gap:6px 14px; padding:7px 14px; background:var(--panel2); border-bottom:1px solid var(--line); font-size:14px}
+.chip{display:inline-flex; align-items:center; gap:5px; white-space:nowrap}
+.dot{width:11px; height:11px; border-radius:50%; display:inline-block; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.chip b{font-variant-numeric:tabular-nums}
+.pmchip{color:var(--arcane); font-weight:700}
+
+main{display:grid; min-height:0}
+#view{position:relative; min-height:0; overflow:hidden; background:#101310}
+#cv{display:block; width:100%; height:100%; touch-action:none}
+#bFit{position:absolute; right:10px; top:10px; width:36px; height:36px; border-radius:8px; border:1px solid rgba(255,255,255,.18); background:rgba(20,24,21,.75); color:#e8dcc4; font-size:18px}
+#mini{position:absolute; right:10px; bottom:10px; width:208px; height:130px; border-radius:8px; border:1px solid rgba(255,255,255,.25); box-shadow:0 4px 14px rgba(0,0,0,.45); touch-action:none; cursor:crosshair}
+@media (max-width:820px){#mini{width:136px; height:85px} #hint{max-width:calc(100% - 170px)!important; font-size:12.5px}}
+#hint{position:absolute; left:10px; bottom:10px; max-width:min(460px,calc(100% - 240px)); padding:6px 10px; border-radius:8px; background:rgba(20,24,21,.82); color:#e8dcc4; font-size:13.5px; pointer-events:none}
+#toast{position:absolute; left:50%; top:12px; transform:translateX(-50%); padding:7px 14px; border-radius:8px; background:rgba(28,20,40,.92); color:#f1e6ff; font-size:14.5px; opacity:0; transition:opacity .25s; pointer-events:none; text-align:center; max-width:90%}
+#toast.show{opacity:1}
+#toast.bad{background:rgba(70,20,16,.92); color:#ffe1dc}
+
+#insp{position:absolute; left:10px; top:10px; width:min(290px,calc(100% - 70px)); padding:10px 34px 10px 12px; border-radius:10px; background:var(--panel); color:var(--ink); border:1px solid var(--line); font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.35)}
+#insp[hidden]{display:none}
+.x{position:absolute; right:6px; top:6px; width:28px; height:28px; border-radius:7px; border:1px solid var(--line); background:var(--panel2); font-size:17px; line-height:1}
+.win{position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(8,10,9,.45); z-index:8}
+.win.show{display:flex}
+.wcard{position:relative; width:100%; max-width:760px; max-height:84vh; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 22px 20px; box-shadow:0 16px 50px rgba(0,0,0,.45)}
+.wcard h2{font-size:22px; color:var(--bronze); padding-right:40px}
+.wcard h3{font-family:Cinzel,Georgia,serif; font-size:15px; color:var(--bronze); margin:18px 0 8px; padding-top:12px; border-top:1px solid var(--line)}
+.wcard.magic h2{color:var(--arcane)}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:8px}
+.grid .big,.grid .done{margin-top:0}
+.cstats{margin-top:4px}
+.grid>p{grid-column:1/-1; margin:0}
+.bar{height:8px; border-radius:4px; background:var(--panel2); overflow:hidden; box-shadow:inset 0 0 0 1px var(--line); margin:4px 0}
+.bar i{display:block; height:100%; width:0}
+.bar.hp i{background:var(--ok)} .bar.pm i{background:var(--arcane)} .bar.food i{background:var(--food)}
+.muted{color:var(--muted); font-size:14px}
+p{margin:6px 0}
+.big{width:100%; text-align:left; padding:8px 10px; border-radius:9px; border:1px solid var(--line); background:var(--panel2); margin-top:6px}
+.big:disabled{opacity:.5; cursor:not-allowed}
+.big .t{font-weight:700}
+.costs{display:flex; flex-wrap:wrap; gap:4px 10px; font-size:13px; margin-top:3px}
+.row{display:grid; grid-template-columns:34px 1fr; gap:2px 8px; align-items:center}
+.row .ic{font-size:24px; grid-row:span 3; text-align:center}
+.ic-img{width:1.15em; height:1.15em; object-fit:contain; vertical-align:-.2em; image-rendering:auto}
+.row .st{font-size:12.5px; color:var(--muted)}
+.seg{display:flex; gap:6px; margin-top:6px}
+.seg button{flex:1; padding:7px 6px; border-radius:9px; border:1px solid var(--line); background:var(--panel2); font-size:14px}
+.seg button.on{background:var(--arcane); border-color:var(--arcane); color:#fff}
+.cities{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px}
+.cchip{padding:4px 9px; border-radius:20px; border:1px solid var(--line); background:var(--panel2); font-size:14px}
+.cchip.on{border-color:var(--bronze); box-shadow:inset 0 0 0 1.5px var(--bronze); font-weight:700}
+.done{display:flex; gap:8px; align-items:center; padding:6px 10px; margin-top:6px; border-radius:9px; border:1px dashed var(--line); color:var(--muted); font-size:14px}
+.done .ic{font-size:20px}
+.req{color:var(--danger); font-size:12.5px}
+
+.bottom{display:flex; align-items:stretch; border-top:1px solid var(--line); background:var(--panel); padding-bottom:env(safe-area-inset-bottom,0px)}
+#tools{display:flex; gap:6px; padding:8px 10px; overflow-x:auto; flex:1; min-width:0}
+.sep{flex:none; width:2px; margin:8px 4px; border-radius:1px; background:var(--bronze); opacity:.55}
+.menus{display:flex; gap:6px; padding:8px 10px; flex:none}
+.tool.menu{min-width:86px; background:var(--panel)}
+.tool.menu.city{border-color:var(--bronze)}
+.tool.menu.magic{border-color:var(--arcane)}
+.tool.menu.army{border-color:var(--danger)}
+.acard{padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--panel2); display:flex; flex-direction:column; gap:6px}
+.acard.sel{border-color:var(--bronze); box-shadow:inset 0 0 0 1.5px var(--bronze)}
+.acard .t{font-weight:700}
+.acard .comp{font-size:17px}
+.acard .acts{display:flex; flex-wrap:wrap; gap:6px}
+.acard button,.acard select,.step button,.gform button{padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel); font:inherit; font-size:14px; color:inherit}
+.acard button.go2,.gform button.go2{background:var(--bronze); border-color:var(--bronze); color:#fff}
+.acard button:disabled,.gform button:disabled{opacity:.5; cursor:not-allowed}
+.step{display:flex; align-items:center; gap:8px; margin:6px 0}
+.step .nm{flex:1}
+.step b{min-width:52px; text-align:center; font-variant-numeric:tabular-nums}
+.step button{width:34px; padding:4px 0}
+.gform{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+.tool.menu.magic .ic{color:var(--arcane)}
+.tool.menu.open{box-shadow:inset 0 0 0 2px currentColor}
+.tool{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; min-width:80px; padding:5px 8px; border-radius:10px; border:1px solid var(--line); background:var(--panel2)}
+.tool .ic{font-size:21px; line-height:1.1}
+.tool .nm{font-size:13px; font-weight:500; white-space:nowrap}
+.tool .costs{font-size:11.5px; justify-content:center; gap:2px 6px; margin-top:1px}
+.tool.on{border-color:var(--bronze); box-shadow:inset 0 0 0 2px var(--bronze)}
+.tool.locked{opacity:.45}
+.tool.poor .costs{color:var(--danger)}
+.key{font-size:11px; color:var(--muted)}
+
+.modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(8,10,9,.62); padding:16px; z-index:10}
+.modal.show{display:flex}
+.card{background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:14px; max-width:580px; width:100%; max-height:88vh; overflow-y:auto; padding:22px 24px}
+.card h2{font-size:24px; color:var(--bronze); margin-bottom:6px}
+.card h3{font-family:Cinzel,Georgia,serif; font-size:15px; margin:16px 0 4px; color:var(--arcane)}
+.card ol,.card ul{margin:4px 0; padding-left:20px}
+.card li{margin:3px 0}
+.card .go{margin-top:18px; width:100%; padding:11px; border-radius:10px; border:0; background:var(--bronze); color:#fff; font-family:Cinzel,Georgia,serif; font-weight:800; font-size:16px}
+.card .go.alt{margin-top:8px; background:var(--panel2); color:var(--ink); border:1px solid var(--line)}
+
+@media (max-width:820px){
+  .status{gap:10px}
+  .brand .sub{display:none}
+  .tool{min-width:70px}
+  .tool.menu{min-width:66px}
+  .menus .key{display:none}
+  .wcard{padding:16px 14px 18px; max-height:86vh}
+}
+@media (prefers-reduced-motion:reduce){ #toast{transition:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="logo">⚒️</span><div><h1>Magicomation</h1><p class="sub">Prototype : usine, villes, magie et armées</p></div></div>
+    <div class="status">
+      <div class="stat"><span class="lbl">Prochaine vague</span><b id="waveTxt">3:00</b></div>
+      <div class="stat"><span class="lbl">Repaires</span><b id="lairTxt">3</b></div>
+    </div>
+    <div class="ctrl">
+      <button id="bSave" title="Sauvegarder la partie" aria-label="Sauvegarder">💾</button>
+      <button id="bLoad" title="Charger la sauvegarde" aria-label="Charger">📂</button>
+      <button id="bPause" title="Pause (Espace)" aria-label="Pause">⏸</button>
+      <button id="bSpeed" title="Vitesse">×1</button>
+      <button id="bHelp" title="Aide" aria-label="Aide">?</button>
+    </div>
+  </header>
+  <div id="stock"></div>
+  <main>
+    <div id="view">
+      <canvas id="cv"></canvas>
+      <canvas id="mini" title="Minicarte : clique pour t'y rendre"></canvas>
+      <button id="bFit" title="Recentrer sur la capitale" aria-label="Recentrer sur la capitale">⤢</button>
+      <div id="insp" hidden><button class="x" id="inspX" aria-label="Fermer">×</button><div id="selTxt"></div></div>
+      <div id="toast"></div>
+      <div id="hint"></div>
+    </div>
+  </main>
+  <footer class="bottom">
+    <div id="tools"></div>
+    <div class="sep" aria-hidden="true"></div>
+    <div class="menus">
+      <button class="tool menu city" id="bCity"><span class="ic">🏰</span><span class="nm">Ville</span><span class="key">touche V</span></button>
+      <button class="tool menu army" id="bArmy"><span class="ic">⚔️</span><span class="nm">Armées</span><span class="key" id="armyKey">touche A</span></button>
+      <button class="tool menu magic" id="bMagic"><span class="ic">✦</span><span class="nm">Magie</span><span class="key" id="pmKey">touche M</span></button>
+    </div>
+  </footer>
+</div>
+<div id="win" class="win">
+  <div class="wcard" id="wcard">
+    <button class="x" id="wX" aria-label="Fermer">×</button>
+    <div id="wCity">
+      <h2 id="cityTitle">Ville</h2>
+      <div id="cityHead"></div>
+      <div class="cstats">
+        <div class="bar hp"><i id="cityHp"></i></div>
+        <p id="cityStats" class="muted"></p>
+        <div class="bar food"><i id="cityFood"></i></div>
+      </div>
+      <h3>Constructions</h3>
+      <div id="cityInfra" class="grid"></div>
+      <h3>Invocations</h3>
+      <p id="sumWhere" class="muted"></p>
+      <div id="summons" class="grid"></div>
+      <h3>Garnison</h3>
+      <div id="garrison"></div>
+    </div>
+    <div id="wArmy">
+      <h2>Armées</h2>
+      <p class="muted">Une armée se déplace où tu veux : sélectionne-la, puis touche un lieu pour y marcher, un repaire pour l'attaquer ou une ville pour la défendre. En chemin, elle combat les monstres qu'elle croise.</p>
+      <div id="armyList" class="grid"></div>
+      <h3>Garnisons</h3>
+      <p class="muted">Les créatures invoquées rejoignent la garnison de leur ville et la défendent. Forme une armée avec elles pour les envoyer ailleurs.</p>
+      <div id="garList" class="grid"></div>
+    </div>
+    <div id="wMagic">
+      <h2>Magie</h2>
+      <div class="bar pm"><i id="pmBar"></i></div>
+      <p id="pmTxt" class="muted"></p>
+      <div id="spells" class="grid"></div>
+    </div>
+  </div>
+</div>
+<div id="modal" class="modal"><div class="card" id="modalCard"></div></div>
+
+<script>
+(()=>{
+"use strict";
+const W=96,H=60;
+const WAVE_GAP=600;
+const DX=[1,0,-1,0],DY=[0,1,0,-1];
+const ITEMS={
+  fer:{n:"Minerai de fer",s:"Fer",c:"#c9793f"},
+  pierre:{n:"Pierre",s:"Pierre",c:"#a9a9a3"},
+  cristal:{n:"Cristal",s:"Cristal",c:"#5cc6f0"},
+  mana:{n:"Essence de feu",s:"Mana",c:"#ff7a3d"},
+  lingot:{n:"Lingot",s:"Lingot",c:"#dfe6ea"},
+  arme:{n:"Arme",s:"Arme",c:"#f2c443"},
+  chaos:{n:"Cristal de chaos",s:"Chaos",c:"#d64cf0"},
+  nourriture:{n:"Nourriture",s:"Nourriture",c:"#8fd14f"},
+};
+const STOCK_KEYS=["fer","pierre","cristal","mana","lingot","arme","chaos"];
+const DEP_COL={fer:"#6d4127",pierre:"#5e5e58",cristal:"#24637f",mana:"#8a3417"};
+const INFRA={
+  remparts:{n:"Remparts",icon:"🧱",cost:{pierre:30,lingot:10},pop:2,desc:"+300 PV, tirs deux fois plus forts et de plus longue portée"},
+  temple:{n:"Temple",icon:"⛪",cost:{pierre:25,cristal:5},pop:3,desc:"Soigne tes unités à 4 cases"},
+  tourmage:{n:"Tour de mage",icon:"🗼",cost:{pierre:20,cristal:10},pop:3,desc:"+0,6 puissance magique par seconde"},
+  academie:{n:"Académie arcane",icon:"📜",cost:{pierre:40,lingot:30,arme:10},pop:4,desc:"Débloque l'Enchanteur et le Dragon dans tout le royaume"},
+};
+const BD={
+  conv:{n:"Convoyeur",icon:"⏩",cost:{lingot:1},hp:20,desc:"Transporte les objets vers l'avant. Glisse pour tracer une ligne."},
+  sepa:{n:"Séparateur",icon:"🔱",cost:{lingot:2},hp:20,desc:"Reçoit par l'arrière et répartit à tour de rôle devant, à gauche et à droite."},
+  fusion:{n:"Fusionneur",icon:"🔀",cost:{lingot:2},hp:20,desc:"Réunit trois lignes : prend à tour de rôle derrière, à gauche et à droite, et sort devant."},
+  mine:{n:"Extracteur",icon:"⛏️",col:"#5b4636",cost:{pierre:5,lingot:2},hp:60,desc:"Sur un gisement : extrait 1 ressource toutes les 1,5 s."},
+  ferme:{n:"Ferme",icon:"🌾",col:"#56642a",cost:{pierre:6,lingot:2},hp:50,desc:"Produit 1 nourriture toutes les 2,5 s. Envoie-la à une ville pour la faire grandir."},
+  fonderie:{n:"Fonderie",icon:"🔥",col:"#7a3b24",cost:{pierre:10,lingot:4},hp:60,recipe:{in:{fer:2},out:"lingot",t:2},desc:"2 fer → 1 lingot"},
+  forge:{n:"Forge",icon:"⚒️",col:"#474c59",cost:{pierre:12,lingot:8},hp:60,recipe:{in:{lingot:2},out:"arme",t:3},desc:"2 lingots → 1 arme"},
+  enchant:{n:"Enchanteur",icon:"🔮",col:"#4a2d6b",cost:{pierre:10,cristal:6},hp:60,req:"academie",recipe:{in:{cristal:1,mana:2},out:"chaos",t:4},desc:"1 cristal + 2 mana → 1 cristal de chaos"},
+  tour:{n:"Tour de garde",icon:"🏹",col:"#3d5a3a",cost:{pierre:15,arme:4},hp:140,desc:"Tire sur les monstres à 4,5 cases."},
+  ville:{n:"Fonder une ville",icon:"🏘️",cost:{pierre:40,lingot:25,arme:5},desc:"Ville de 2×2 cases, à 7 cases minimum des autres. Étend ton territoire."},
+};
+const UNITS={
+  guerrier:{n:"Guerrier nain",icon:"🧔",cost:{arme:3,lingot:2},hp:60,atk:8,range:1,spd:1.7,cd:.8,aggro:5},
+  golem:{n:"Golem de pierre",icon:"🗿",cost:{pierre:25,cristal:5},hp:220,atk:12,range:1,spd:1.1,cd:1.2,aggro:5},
+  dragon:{n:"Dragon de chaos",icon:"🐉",cost:{chaos:12,arme:6},hp:380,atk:30,range:3.5,spd:2.3,cd:1,aggro:7,req:"academie",big:true},
+};
+const ENEMIES={
+  gobelin:{n:"Gobelin",icon:"👺",hp:30,atk:5,range:1,spd:1.4,cd:1},
+  squelette:{n:"Squelette",icon:"💀",hp:55,atk:7,range:1,spd:1.2,cd:1},
+  troll:{n:"Troll",icon:"👹",hp:190,atk:16,range:1.1,spd:.9,cd:1.4,big:true},
+};
+const SPELLS={
+  feu:{n:"Boule de feu",icon:"☄️",pm:30,target:true,desc:"70 dégâts en zone à l'endroit visé, repaires compris"},
+  soin:{n:"Guérison",icon:"✨",pm:25,desc:"Rend 60 % de leurs PV à toutes tes unités"},
+  ardeur:{n:"Ardeur des forges",icon:"⚙️",pm:40,desc:"Extracteurs, fermes et machines deux fois plus rapides pendant 30 s"},
+};
+const CITY_NAMES=["Valombre","Karak-Dûn","Brisecendre","Hautcristal","Morneval","Aubefer","Lysandre","Roc-Ardent"];
+const MAX_POP=10, cityR=c=>5+c.pop, foodNeed=c=>c.pop*6;
+
+let G, started=false, tool="hand", rot=0, hover=null, hoverW=null, hoverIn=false;
+const cam={s:20,ox:0,oy:0,user:false,fitS:20};
+let VW=100,VH=100,dpr=1,ground=null,terrCv=null,miniBase=null;
+
+const $=id=>document.getElementById(id);
+const cv=$("cv"), ctx=cv.getContext("2d"), view=$("view");
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const noise=(x,y,s)=>{let h=Math.imul(x,374761393)^Math.imul(y,668265263)^Math.imul(s|0,2246822519); h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296;};
+const at=(x,y)=>(x>=0&&y>=0&&x<W&&y<H)?G.tiles[y][x]:null;
+const cc=c=>({x:c.x+1,y:c.y+1});
+const has=k=>G.cities.some(c=>c.infra[k]);
+const fmt=n=>(Math.round(n*10)/10).toString().replace(".",",");
+
+/* ---------- Carte ---------- */
+function makeCity(x,y,capital){
+  const c={type:"cit",x,y,capital,name:capital?"Arcanum":CITY_NAMES[G.nameI++%CITY_NAMES.length],
+    pop:capital?3:1,food:0,infra:{},hp:capital?600:300,maxhp:capital?600:300,cd:0};
+  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)G.tiles[y+dy][x+dx].b=c;
+  G.cities.push(c); G.blds.push(c);
+  newArmy({type:"defend",city:c},true,c);
+  return c;
+}
+function newGame(){
+  G={t:0,speed:1,paused:false,over:false,tiles:[],blds:[],units:[],enemies:[],lairs:[],fx:[],booms:[],cities:[],
+     stock:{fer:0,pierre:55,cristal:0,mana:0,lingot:34,arme:0,chaos:0},
+     pm:20,buff:0,nextWave:WAVE_GAP,wave:0,kills:0,sel:null,selCity:null,nameI:0,terr:null,seed:(Math.random()*1e9)|0,
+     armies:[],armyN:0,fieldN:0,selArmy:null,marks:[],form:{}};
+  for(let y=0;y<H;y++){G.tiles[y]=[];for(let x=0;x<W;x++)G.tiles[y][x]={dep:null,b:null,lair:null};}
+  const cx=W/2-1,cy=H/2-1;
+  G.selCity=makeCity(cx,cy,true);
+  [[5,5],[W-6,7],[W-8,H-6]].forEach(([x,y])=>{
+    const l={x,y,hp:500,maxhp:500,alive:true,g1:false,g2:false,lvl:0};
+    G.lairs.push(l); G.tiles[y][x].lair=l;
+  });
+  const okDep=(x,y)=>{
+    const t=at(x,y); if(!t||t.b||t.lair) return false;
+    if(Math.abs(x-(cx+.5))<3.5&&Math.abs(y-(cy+.5))<3.5) return false;
+    for(const l of G.lairs) if(Math.hypot(x-l.x,y-l.y)<5) return false;
+    return x>0&&y>0&&x<W-1&&y<H-1;
+  };
+  const blob=(k,x,y,n)=>{
+    let px=x,py=y,c=0,guard=0;
+    while(c<n&&guard++<n*12){
+      if(okDep(px,py)&&!G.tiles[py][px].dep){G.tiles[py][px].dep=k;c++;}
+      const d=ri(0,3); const nx=px+DX[d],ny=py+DY[d];
+      if(nx>0&&ny>0&&nx<W-1&&ny<H-1&&Math.hypot(nx-x,ny-y)<3.5){px=nx;py=ny;}
+    }
+  };
+  const far=(dmin,dmax)=>{
+    const a=rnd(0,Math.PI*2),d=rnd(dmin,dmax);
+    return [Math.max(2,Math.min(W-3,Math.round(cx+Math.cos(a)*d*1.5))),Math.max(2,Math.min(H-3,Math.round(cy+Math.sin(a)*d)))];
+  };
+  blob("fer",cx-5+ri(-1,0),cy-2+ri(-1,1),9);
+  blob("pierre",cx+6+ri(0,1),cy+2+ri(-1,1),9);
+  for(let i=0;i<3;i++){ blob("fer",...far(13,24),8); blob("pierre",...far(13,24),8); }
+  for(let i=0;i<3;i++){ blob("cristal",...far(17,27),9); blob("mana",...far(17,27),9); }
+  for(let i=0;i<2;i++){ blob("cristal",...far(22,29),10); blob("mana",...far(22,29),10); }
+  buildGround(); recomputeTerr();
+}
+function buildGround(){
+  const T=32; ground=document.createElement("canvas"); ground.width=W*T; ground.height=H*T;
+  const g=ground.getContext("2d"), S=G.seed|0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const l=19+noise(x,y,S)*4+((x+y)%2?1.2:0);
+    g.fillStyle=`hsl(${100+noise(x,y,S+1)*14},24%,${l}%)`; g.fillRect(x*T,y*T,T,T);
+    const d=G.tiles[y][x].dep;
+    if(d){
+      g.fillStyle=DEP_COL[d]; g.fillRect(x*T+1,y*T+1,T-2,T-2);
+      g.fillStyle=ITEMS[d].c;
+      for(let i=0;i<4;i++){g.globalAlpha=.55+noise(x,y,S+2+i*4)*.35;g.beginPath();g.arc(x*T+5+noise(x,y,S+3+i*4)*(T-10),y*T+5+noise(x,y,S+4+i*4)*(T-10),2+noise(x,y,S+5+i*4)*3,0,7);g.fill();}
+      g.globalAlpha=1;
+    }
+  }
+  for(const l of G.lairs){
+    const gr=g.createRadialGradient((l.x+.5)*T,(l.y+.5)*T,4,(l.x+.5)*T,(l.y+.5)*T,T*2.4);
+    gr.addColorStop(0,"rgba(40,8,6,.85)");gr.addColorStop(1,"rgba(40,8,6,0)");
+    g.fillStyle=gr; g.fillRect((l.x-3)*T,(l.y-3)*T,T*7,T*7);
+  }
+  miniBase=document.createElement("canvas"); miniBase.width=W*4; miniBase.height=H*4;
+  miniBase.getContext("2d").drawImage(ground,0,0,W*4,H*4);
+  g.strokeStyle="rgba(0,0,0,.14)"; g.lineWidth=1;
+  for(let x=0;x<=W;x++){g.beginPath();g.moveTo(x*T+.5,0);g.lineTo(x*T+.5,H*T);g.stroke();}
+  for(let y=0;y<=H;y++){g.beginPath();g.moveTo(0,y*T+.5);g.lineTo(W*T,y*T+.5);g.stroke();}
+}
+function recomputeTerr(){
+  G.terr=[];
+  const T=8; terrCv=document.createElement("canvas"); terrCv.width=W*T; terrCv.height=H*T;
+  const g=terrCv.getContext("2d"); g.fillStyle="rgba(4,7,5,.55)";
+  for(let y=0;y<H;y++){G.terr[y]=[];for(let x=0;x<W;x++){
+    const inside=G.cities.some(c=>Math.hypot(x+.5-cc(c).x,y+.5-cc(c).y)<=cityR(c));
+    G.terr[y][x]=inside; if(!inside) g.fillRect(x*T,y*T,T,T);
+  }}
+}
+
+/* ---------- Ressources ---------- */
+const canAfford=c=>Object.entries(c).every(([k,v])=>G.stock[k]>=v);
+const pay=c=>{for(const k in c)G.stock[k]-=c[k];};
+const refund=c=>{for(const k in c)G.stock[k]+=c[k];};
+
+/* ---------- Bâtiments ---------- */
+function canPlace(k,x,y){
+  const t=at(x,y); if(!t) return "Hors de la carte";
+  const d=BD[k];
+  if(d.req&&!has(d.req)) return `Construis une ${INFRA[d.req].n} pour débloquer : ${d.n}`;
+  if(k==="ville") return canFound(x,y);
+  if(t.b||t.lair) return "Case déjà occupée";
+  if(!G.terr[y][x]) return "Hors de ton territoire : fais grandir une ville ou fondes-en une nouvelle";
+  if(k==="mine"&&!t.dep) return "L'extracteur doit être posé sur un gisement";
+  if(k!=="mine"&&!CARRY[k]&&t.dep) return "Garde les gisements pour les extracteurs";
+  if(!canAfford(d.cost)) return `Ressources insuffisantes pour : ${d.n}`;
+  return null;
+}
+function canFound(x,y){
+  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
+    const t=at(x+dx,y+dy);
+    if(!t) return "Hors de la carte";
+    if(t.b||t.lair) return "Emplacement occupé";
+    if(t.dep) return "Une ville ne peut pas être fondée sur un gisement";
+  }
+  for(const c of G.cities) if(Math.hypot(x+1-cc(c).x,y+1-cc(c).y)<7) return `Trop près de ${c.name} (7 cases minimum)`;
+  if(!canAfford(BD.ville.cost)) return "Ressources insuffisantes pour fonder une ville";
+  return null;
+}
+function place(k,x,y,dir){
+  const b={type:k,x,y,dir,hp:BD[k].hp,maxhp:BD[k].hp,t:0,cd:0,item:null,out:(k==="mine"||k==="ferme")?null:0,inb:{},craft:false,rr:0};
+  G.tiles[y][x].b=b; G.blds.push(b); return b;
+}
+function removeB(b){
+  G.tiles[b.y][b.x].b=null;
+  const i=G.blds.indexOf(b); if(i>=0)G.blds.splice(i,1);
+}
+function give(tx,ty,k,sx,sy){
+  const t=at(tx,ty); if(!t||!t.b) return false;
+  const b=t.b;
+  if(b.type==="cit"){ if(k==="nourriture") b.food++; else G.stock[k]++; return true; }
+  if(b.type==="conv"){
+    if(b.item) return false;
+    if(tx+DX[b.dir]===sx&&ty+DY[b.dir]===sy) return false;
+    b.item={k,p:0}; return true;
+  }
+  if(b.type==="sepa"){
+    if(b.item) return false;
+    if(tx-DX[b.dir]!==sx||ty-DY[b.dir]!==sy) return false;
+    b.item={k,p:0}; return true;
+  }
+  if(b.type==="fusion") return false;
+  const r=BD[b.type].recipe;
+  if(r&&r.in[k]){ if((b.inb[k]||0)>=10) return false; b.inb[k]=(b.inb[k]||0)+1; return true; }
+  return false;
+}
+const CARRY={conv:1,sepa:1,fusion:1};
+const sepaOuts=b=>[b.dir,(b.dir+1)%4,(b.dir+3)%4];
+const fusionIns=b=>[(b.dir+2)%4,(b.dir+1)%4,(b.dir+3)%4];
+function faces(s,mx,my){
+  if(s.type==="sepa") return sepaOuts(s).some(d=>s.x+DX[d]===mx&&s.y+DY[d]===my);
+  return s.x+DX[s.dir]===mx&&s.y+DY[s.dir]===my;
+}
+function takeFrom(x,y,mx,my){
+  const t=at(x,y); if(!t||!t.b) return null;
+  const s=t.b;
+  if(s.type==="cit"||s.type==="tour"||!faces(s,mx,my)) return null;
+  if(CARRY[s.type]){
+    if(!s.item||s.item.p<1) return null;
+    const k=s.item.k; s.item=null;
+    if(s.type==="sepa"){const i=sepaOuts(s).findIndex(d=>s.x+DX[d]===mx&&s.y+DY[d]===my); if(i>=0) s.rr=(i+1)%3;}
+    return k;
+  }
+  if(s.type==="mine"||s.type==="ferme"){ if(!s.out) return null; const k=s.out; s.out=null; return k; }
+  const r=BD[s.type].recipe;
+  if(r&&s.out>0){ s.out--; return r.out; }
+  return null;
+}
+function stepBuildings(dt){
+  const pdt=G.buff>0?dt*2:dt;
+  for(const b of G.blds){
+    if(b.type==="cit") continue;
+    const fx=b.x+DX[b.dir],fy=b.y+DY[b.dir];
+    if(b.type==="conv"){
+      if(b.item){b.item.p=Math.min(1,b.item.p+dt*2.2); if(b.item.p>=1&&give(fx,fy,b.item.k,b.x,b.y)) b.item=null;}
+    }else if(b.type==="sepa"){
+      if(b.item){
+        b.item.p=Math.min(1,b.item.p+dt*2.2);
+        if(b.item.p>=1){
+          const outs=sepaOuts(b);
+          for(let i=0;i<3;i++){
+            const o=(b.rr+i)%3, d=outs[o];
+            if(give(b.x+DX[d],b.y+DY[d],b.item.k,b.x,b.y)){ b.rr=(o+1)%3; b.item=null; break; }
+          }
+        }
+      }
+    }else if(b.type==="fusion"){
+      if(!b.item){
+        const ins=fusionIns(b);
+        for(let i=0;i<3;i++){
+          const o=(b.rr+i)%3, d=ins[o], k=takeFrom(b.x+DX[d],b.y+DY[d],b.x,b.y);
+          if(k){ b.item={k,p:0}; b.rr=(o+1)%3; break; }
+        }
+      }
+      if(b.item){b.item.p=Math.min(1,b.item.p+dt*2.2); if(b.item.p>=1&&give(fx,fy,b.item.k,b.x,b.y)) b.item=null;}
+    }else if(b.type==="mine"||b.type==="ferme"){
+      const per=b.type==="mine"?1.5:2.5;
+      if(!b.out){b.t+=pdt; if(b.t>=per){b.t=0; b.out=b.type==="mine"?G.tiles[b.y][b.x].dep:"nourriture";}}
+      if(b.out&&give(fx,fy,b.out,b.x,b.y)) b.out=null;
+    }else if(b.type==="tour"){
+      b.cd-=dt;
+      if(b.cd<=0){const e=nearestEnemy(b.x+.5,b.y+.5,4.5); if(e){hitEnemy(e,7); addFx(b.x+.5,b.y+.5,e.x,e.y,"#ffe7a0",1.5); b.cd=.9;}}
+    }else{
+      const r=BD[b.type].recipe;
+      if(!b.craft){
+        if(b.out<10&&Object.entries(r.in).every(([k,v])=>(b.inb[k]||0)>=v)){
+          for(const k in r.in)b.inb[k]-=r.in[k]; b.craft=true; b.t=0;
+        }
+      }else{ b.t+=pdt; if(b.t>=r.t){b.craft=false; b.out++;} }
+      if(b.out>0&&give(fx,fy,r.out,b.x,b.y)) b.out--;
+    }
+  }
+}
+function pmRate(){ return G.cities.reduce((s,c)=>s+c.pop*.06+(c.infra.tourmage?.6:0),0); }
+function stepCities(dt){
+  let dirty=false;
+  for(const c of G.cities){
+    if(c.pop<MAX_POP&&c.food>=foodNeed(c)){ c.food-=foodNeed(c); c.pop++; dirty=true; toast(`${c.name} grandit : population ${c.pop}, territoire étendu`); }
+    const p=cc(c); c.cd-=dt;
+    if(c.cd<=0){
+      const e=nearestEnemy(p.x,p.y,c.infra.remparts?4.6:3.6);
+      if(e){hitEnemy(e,c.infra.remparts?10:5); addFx(p.x,p.y,e.x,e.y,"#c9a6ff",2); c.cd=1;}
+    }
+    if(c.infra.temple) nearIn(uGrid,p.x,p.y,4.6,u=>{ if(Math.hypot(u.x-p.x,u.y-p.y)<4) u.hp=Math.min(UNITS[u.k].hp,u.hp+5*dt); });
+  }
+  if(dirty) recomputeTerr();
+  G.pm=Math.min(200,G.pm+pmRate()*dt);
+  G.buff=Math.max(0,G.buff-dt);
+}
+
+/* ---------- Combat ---------- */
+function addFx(x1,y1,x2,y2,col,w){G.fx.push({x1,y1,x2,y2,col,w,t:.25,max:.25});}
+function makeGrid(arr,C){
+  const m=new Map();
+  for(const o of arr){const k=((o.y/C)|0)*4096+((o.x/C)|0); let a=m.get(k); if(!a)m.set(k,a=[]); a.push(o);}
+  return {m,C};
+}
+function nearIn(g,x,y,r,cb){
+  const C=g.C, x0=Math.max(0,(x-r)/C|0), x1=(x+r)/C|0, y0=Math.max(0,(y-r)/C|0), y1=(y+r)/C|0;
+  for(let gy=y0;gy<=y1;gy++)for(let gx=x0;gx<=x1;gx++){const a=g.m.get(gy*4096+gx); if(a)for(const o of a)cb(o);}
+}
+let eGrid=makeGrid([],2), uGrid=makeGrid([],2);
+function rebuildGrids(){ eGrid=makeGrid(G.enemies,2); uGrid=makeGrid(G.units,2); }
+function nearestEnemy(x,y,r){
+  let best=null,bd=r;
+  nearIn(eGrid,x,y,r+.6,e=>{ if(e.hp<=0) return; const d=Math.hypot(e.x-x,e.y-y); if(d<bd){bd=d;best=e;} });
+  return best;
+}
+function spawnEnemy(k,x,y){G.enemies.push({k,x:x+rnd(-.4,.4),y:y+rnd(-.4,.4),hp:ENEMIES[k].hp,cd:0});}
+function hitEnemy(e,d){ if(e.hp>0){e.hp-=d; if(e.hp<=0)G.kills++;} }
+function hitLair(l,d){
+  if(!l.alive) return;
+  l.hp-=d;
+  if(!l.g1){
+    l.g1=true;
+    for(let i=0;i<2+l.lvl;i++) spawnEnemy("squelette",l.x+.5,l.y+.5);
+    for(let i=0;i<1+l.lvl;i++) spawnEnemy("gobelin",l.x+.5,l.y+.5);
+  }
+  if(l.hp<l.maxhp/2&&!l.g2){
+    l.g2=true;
+    for(let i=0;i<1+((l.lvl/2)|0);i++) spawnEnemy("troll",l.x+.5,l.y+.5);
+    for(let i=0;i<1+l.lvl;i++) spawnEnemy("squelette",l.x+.5,l.y+.5);
+  }
+  if(l.hp<=0){
+    l.alive=false; G.tiles[l.y][l.x].lair=null;
+    G.stock.chaos+=8; G.stock.cristal+=15; G.stock.mana+=15; G.stock.arme+=5; G.pm=Math.min(200,G.pm+25);
+    toast("Repaire détruit ! Trésor : 8 chaos, 15 cristal, 15 mana, 5 armes, 25 puissance magique");
+    if(G.lairs.every(q=>!q.alive)) endGame(true);
+  }
+}
+function destroyCity(c){
+  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)G.tiles[c.y+dy][c.x+dx].b=null;
+  G.cities.splice(G.cities.indexOf(c),1); G.blds.splice(G.blds.indexOf(c),1);
+  const g=garrisonOf(c);
+  if(g){const p=cc(c); g.garrison=false; g.city=null; g.short=ORD(++G.fieldN); g.name=`${g.short} armée`; g.order={type:"hold",x:p.x,y:p.y}; g.had=true;}
+  if(G.selCity===c) G.selCity=G.cities[0];
+  recomputeTerr(); toast(`${c.name} a été rasée par les monstres`,true);
+}
+function hitBuilding(b,d){
+  if(b.hp<=0) return;
+  b.hp-=d;
+  if(b.hp<=0){ if(b.type==="cit"){ if(b.capital) endGame(false); else destroyCity(b); } else removeB(b); }
+}
+function moveTo(o,tx,ty,spd,dt){
+  const dx=tx-o.x,dy=ty-o.y,d=Math.hypot(dx,dy); if(d<1e-3) return;
+  const st=Math.min(d,spd*dt); o.x+=dx/d*st; o.y+=dy/d*st;
+  o.x=Math.max(.3,Math.min(W-.3,o.x)); o.y=Math.max(.3,Math.min(H-.3,o.y));
+}
+function separate(arr){
+  const n=arr.length; if(n<2) return;
+  for(let i=0;i<n;i++) arr[i]._i=i;
+  const g=makeGrid(arr,1);
+  for(let i=0;i<n;i++){
+    const a=arr[i];
+    nearIn(g,a.x,a.y,.8,b=>{
+      if(b._i<=i) return;
+      let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+      if(d<.55){ if(d<1e-3){dx=rnd(-1,1);dy=rnd(-1,1);d=Math.hypot(dx,dy)||1;} const p=(.55-d)*.25; a.x-=dx/d*p;a.y-=dy/d*p;b.x+=dx/d*p;b.y+=dy/d*p; }
+    });
+  }
+}
+function stepUnits(dt){
+  stepArmies();
+  const idx={};
+  for(const u of G.units){
+    const d=UNITS[u.k]; u.cd-=dt;
+    let a=armyById(u.army);
+    if(!a){a=garrisonOf(G.cities[0]); u.army=a.id;}
+    const i=idx[a.id]=(idx[a.id]||0)+1, o=a.order;
+    let cx,cy,leash=null;
+    if(o.type==="defend"){const p=cc(o.city); cx=p.x; cy=p.y; leash=8;}
+    else if(o.type==="attack"){cx=o.lair.x+.5; cy=o.lair.y+.5;}
+    else {cx=o.x; cy=o.y;}
+    let tgt=nearestEnemy(u.x,u.y,d.aggro), tx,ty, rng=d.range, kind="e";
+    if(tgt&&leash&&Math.hypot(tgt.x-cx,tgt.y-cy)>leash) tgt=null;
+    if(tgt){tx=tgt.x;ty=tgt.y;}
+    else if(o.type==="attack"){tgt=o.lair; tx=cx; ty=cy; rng+=.5; kind="l";}
+    if(tgt){
+      const dd=Math.hypot(tx-u.x,ty-u.y);
+      if(dd>rng) moveTo(u,tx,ty,d.spd,dt);
+      else if(u.cd<=0){
+        if(kind==="e") hitEnemy(tgt,d.atk); else hitLair(tgt,d.atk);
+        addFx(u.x,u.y,tx,ty,u.k==="dragon"?"#ff8a2a":"#fff4d0",u.k==="dragon"?4:1.2);
+        u.cd=d.cd;
+      }
+    }else{
+      const ang=i*2.39996, def=o.type==="defend";
+      const r=def?2.3+(i%4)*.55:.8*Math.sqrt(i-1);
+      moveTo(u,cx+Math.cos(ang)*r,cy+Math.sin(ang)*r*(def?.8:1),d.spd,dt);
+    }
+  }
+  for(const e of G.enemies){
+    const d=ENEMIES[e.k]; e.cd-=dt;
+    let best=null,bd=3; nearIn(uGrid,e.x,e.y,3.6,u=>{ if(u.hp<=0) return; const q=Math.hypot(u.x-e.x,u.y-e.y); if(q<bd){bd=q;best=u;} });
+    if(best){
+      if(bd>d.range) moveTo(e,best.x,best.y,d.spd,dt);
+      else if(e.cd<=0){best.hp-=d.atk; e.cd=d.cd; addFx(e.x,e.y,best.x,best.y,"#ff5a4a",1.2);}
+      continue;
+    }
+    let bb=null,bbd=1.25;
+    const ex=Math.floor(e.x),ey=Math.floor(e.y);
+    for(let y=ey-1;y<=ey+1;y++)for(let x=ex-1;x<=ex+1;x++){
+      const t=at(x,y); if(!t||!t.b||t.b.type==="cit")continue;
+      const q=Math.hypot(x+.5-e.x,y+.5-e.y); if(q<bbd){bbd=q;bb=t.b;}
+    }
+    if(bb){ if(e.cd<=0){hitBuilding(bb,d.atk); e.cd=d.cd;} continue; }
+    let city=null,cd=1e9; for(const c of G.cities){const q=Math.hypot(cc(c).x-e.x,cc(c).y-e.y);if(q<cd){cd=q;city=c;}}
+    if(!city) continue;
+    const p=cc(city);
+    if(cd>1.7) moveTo(e,p.x,p.y,d.spd,dt);
+    else if(e.cd<=0){hitBuilding(city,d.atk); e.cd=d.cd; addFx(e.x,e.y,p.x,p.y,"#ff5a4a",1.2);}
+    if(G.over) return;
+  }
+  G.enemies=G.enemies.filter(e=>e.hp>0);
+  G.units=G.units.filter(u=>u.hp>0);
+  separate(G.units); separate(G.enemies);
+}
+function stepWaves(dt){
+  if(!G.lairs.some(l=>l.alive)) return;
+  G.nextWave-=dt;
+  if(G.nextWave<=0){
+    G.wave++; const w=G.wave;
+    for(const l of G.lairs){
+      if(!l.alive)continue;
+      for(let i=0;i<1+Math.floor(w/2);i++)spawnEnemy("gobelin",l.x+.5,l.y+.5);
+      for(let i=0;i<Math.floor(w/2);i++)spawnEnemy("squelette",l.x+.5,l.y+.5);
+      for(let i=0;i<(w>=5?Math.floor((w-3)/2):0);i++)spawnEnemy("troll",l.x+.5,l.y+.5);
+      l.lvl++; l.maxhp=500+150*l.lvl; l.hp=Math.min(l.maxhp,l.hp+150+l.maxhp*.25); l.g1=l.g2=false;
+    }
+    toast(`Vague ${w} : les monstres sortent des repaires, qui grandissent (niveau ${w})`,true);
+    G.nextWave=WAVE_GAP;
+  }
+}
+
+/* ---------- Armées ---------- */
+const deN=n=>/^[AEIOUYÂÉÈaeiouy]/.test(n)?`d'${n}`:`de ${n}`;
+const ORD=n=>n===1?"1re":n+"e";
+const capF=t=>t.charAt(0).toUpperCase()+t.slice(1);
+function newArmy(order,garrison,city){
+  const a={id:++G.armyN,garrison:!!garrison,city:city||null,order,had:false};
+  if(garrison) a.name=`garnison ${deN(city.name)}`; else {a.short=ORD(++G.fieldN); a.name=`${a.short} armée`;}
+  G.armies.push(a); return a;
+}
+const armyById=id=>G.armies.find(a=>a.id===id);
+const unitsOf=a=>G.units.filter(u=>u.army===a.id);
+const garrisonOf=c=>G.armies.find(a=>a.garrison&&a.city===c);
+function centroid(us){let x=0,y=0;us.forEach(u=>{x+=u.x;y+=u.y;});return{x:x/us.length,y:y/us.length};}
+function compHTML(us){const cnt={};us.forEach(u=>cnt[u.k]=(cnt[u.k]||0)+1);return Object.entries(cnt).map(([k,n])=>`${UNITS[k].icon}×${n}`).join("  ");}
+function orderText(a){const o=a.order;
+  if(o.type==="defend") return `Défend ${o.city.name}`;
+  if(o.type==="attack") return "Attaque un repaire";
+  if(o.type==="move") return "En marche";
+  return "En position";}
+function formArmy(us){
+  const c=centroid(us), a=newArmy({type:"hold",x:c.x,y:c.y},false);
+  us.forEach(u=>u.army=a.id); a.had=true; return a;
+}
+function selectArmy(a,focus){
+  if(!a) return;
+  G.selArmy=a.id; G.sel=null; tool="army"; buildTools(); updateHint();
+  if(focus){const us=unitsOf(a); if(us.length){const c=centroid(us); centerOn(c.x,c.y); cam.user=true;}}
+  updateUI();
+}
+function giveOrder(a,wx,wy){
+  const us=unitsOf(a);
+  if(!us.length){toast("Cette troupe n'a aucune unité",true);return;}
+  if(a.garrison){ a=formArmy(us); G.selArmy=a.id; toast(`Les unités de la garnison forment la ${a.name}`); }
+  const l=G.lairs.find(q=>q.alive&&Math.hypot(q.x+.5-wx,q.y+.5-wy)<1.3);
+  const t=at(Math.floor(wx),Math.floor(wy));
+  if(l){a.order={type:"attack",lair:l}; toast(`${capF(a.name)} : à l'attaque du repaire !`);}
+  else if(t&&t.b&&t.b.type==="cit"){a.order={type:"defend",city:t.b}; toast(`${capF(a.name)} : défend ${t.b.name}`);}
+  else a.order={type:"move",x:wx,y:wy};
+  G.marks.push({x:wx,y:wy,t:.7,max:.7,col:l?"#ff6a5a":"#ffd98a"});
+  updateHint(); updateUI();
+}
+function dissolve(a){
+  const us=unitsOf(a); if(!us.length) return;
+  const c=centroid(us); let best=null,bd=1e9;
+  for(const q of G.cities){const d=Math.hypot(cc(q).x-c.x,cc(q).y-c.y); if(d<bd){bd=d;best=q;}}
+  const g=garrisonOf(best); us.forEach(u=>u.army=g.id);
+  G.armies.splice(G.armies.indexOf(a),1);
+  if(G.selArmy===a.id) setTool("hand");
+  toast(`${capF(a.name)} rejoint la garnison ${deN(best.name)}`); updateUI();
+}
+function unitAt(w){let best=null,bd=.75;for(const u of G.units){const d=Math.hypot(u.x-w.x,u.y-w.y);if(d<bd){bd=d;best=u;}}return best;}
+function stepArmies(){
+  for(const a of G.armies){
+    const o=a.order;
+    if(a.garrison){a.order={type:"defend",city:a.city}; continue;}
+    if(o.type==="defend"&&!G.cities.includes(o.city)){const p=cc(o.city); a.order={type:"hold",x:p.x,y:p.y};}
+    else if(o.type==="attack"&&!o.lair.alive){a.order={type:"hold",x:o.lair.x+.5,y:o.lair.y+.5};}
+    else if(o.type==="move"){const us=unitsOf(a); if(us.length){const c=centroid(us); if(Math.hypot(c.x-o.x,c.y-o.y)<1.2) a.order={type:"hold",x:o.x,y:o.y};}}
+  }
+  for(const a of [...G.armies]){
+    if(a.garrison||unitsOf(a).length) continue;
+    G.armies.splice(G.armies.indexOf(a),1);
+    if(a.had) toast(`La ${a.name} a été anéantie`,true);
+    if(G.selArmy===a.id) setTool("hand");
+  }
+}
+
+/* ---------- Actions du joueur ---------- */
+function summon(k){
+  const d=UNITS[k];
+  if(d.req&&!has(d.req)){toast(`Construis une ${INFRA[d.req].n} pour invoquer : ${d.n}`,true);return;}
+  if(!canAfford(d.cost)){toast(`Ressources insuffisantes pour : ${d.n}`,true);return;}
+  pay(d.cost);
+  const p=cc(G.selCity);
+  G.units.push({k,x:p.x+rnd(-.3,.3),y:p.y+1.4,hp:d.hp,cd:0,army:garrisonOf(G.selCity).id});
+  toast(`${d.n} invoqué : il rejoint la garnison ${deN(G.selCity.name)}`);
+  updateUI();
+}
+function buildInfra(k){
+  const c=G.selCity, d=INFRA[k];
+  if(c.infra[k]) return;
+  if(c.pop<d.pop){toast(`${c.name} doit atteindre ${d.pop} de population`,true);return;}
+  if(!canAfford(d.cost)){toast(`Ressources insuffisantes pour : ${d.n}`,true);return;}
+  pay(d.cost); c.infra[k]=true;
+  if(k==="remparts"){c.maxhp+=300; c.hp+=300;}
+  toast(`${d.n} construit à ${c.name}`);
+  if(k==="academie") buildTools();
+  updateUI();
+}
+function cast(k,wx,wy){
+  const s=SPELLS[k];
+  if(G.pm<s.pm){toast(`Il faut ${s.pm} de puissance magique pour : ${s.n}`,true);return false;}
+  G.pm-=s.pm;
+  if(k==="feu"){
+    for(const e of G.enemies) if(Math.hypot(e.x-wx,e.y-wy)<=1.6) hitEnemy(e,70);
+    for(const l of G.lairs) if(l.alive&&Math.hypot(l.x+.5-wx,l.y+.5-wy)<=1.6) hitLair(l,70);
+    G.booms.push({x:wx,y:wy,r:1.6,t:.6,max:.6});
+  }else if(k==="soin"){
+    for(const u of G.units) u.hp=Math.min(UNITS[u.k].hp,u.hp+UNITS[u.k].hp*.6);
+    toast(G.units.length?"Guérison lancée sur toute ton armée":"Guérison lancée, mais tu n'as aucune unité");
+  }else if(k==="ardeur"){
+    G.buff=30; toast("Ardeur des forges : production doublée pendant 30 s");
+  }
+  updateUI(); return true;
+}
+function spellClick(k){
+  if(SPELLS[k].target){
+    if(G.pm<SPELLS[k].pm){toast(`Il faut ${SPELLS[k].pm} de puissance magique pour : ${SPELLS[k].n}`,true);return;}
+    closeWin(); setTool("spell:"+k);
+  } else cast(k);
+}
+function endGame(win){
+  if(G.over) return; G.over=true;
+  const m=Math.floor(G.t/60),s=Math.floor(G.t%60).toString().padStart(2,"0");
+  const pop=G.cities.reduce((a,c)=>a+c.pop,0);
+  showModal(win
+    ?`<h2>Victoire</h2><p>Les trois repaires sont détruits en ${m}:${s}. Ton royaume compte ${G.cities.length} ville${G.cities.length>1?"s":""} et ${pop} de population, et ${G.kills} monstres ont été vaincus.</p>`
+    :`<h2>Arcanum est tombée</h2><p>Tu as tenu ${m}:${s} et vaincu ${G.kills} monstres, jusqu'à la vague ${G.wave}. Des remparts, des tours de garde près des convoyeurs et une armée plus tôt aideront la prochaine fois.</p>`,
+    "Rejouer",()=>{closeWin();newGame();fit();setTool("hand");buildCityPanel(true);updateUI();});
+}
+
+/* ---------- Rendu ---------- */
+const emoCache={}, imgCache={};
+/* Un "icon" peut etre un emoji OU un chemin d'image ("art/gobelin.png").
+   Ecrire "art/gobelin.png|<emoji>" donne un emoji de secours affiche
+   tant que l'image n'est pas chargee (ou si elle manque). */
+const isSprite=s=>/\.(png|webp|jpg|jpeg|gif|svg)$/i.test(s);
+function img(src,fb){
+  let im=imgCache[src];
+  if(!im){ im=imgCache[src]=new Image(); im.onload=()=>im.ok=true; im.onerror=()=>im.bad=true; im.src=src; }
+  return im.ok?im:(fb?emo(fb):null);
+}
+function emo(ch){
+  if(!emoCache[ch]){const c=document.createElement("canvas");c.width=c.height=72;const g=c.getContext("2d");
+    g.font='56px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';g.textAlign="center";g.textBaseline="middle";g.fillText(ch,36,40);emoCache[ch]=c;}
+  return emoCache[ch];
+}
+function drawEmo(ch,x,y,size){
+  const parts=String(ch).split("|"), src=parts[0];
+  const im=isSprite(src)?img(src,parts[1]||"❓"):emo(src);
+  if(!im) return;
+  const k=size/Math.max(im.width,im.height), w=im.width*k, h=im.height*k;
+  ctx.drawImage(im,x-w/2,y-h/2,w,h);
+}
+/* art d'une definition : sprite s'il y en a un, sinon l'emoji */
+const art=d=>d.sprite?d.sprite+"|"+d.icon:d.icon;
+/* meme chose pour les panneaux HTML */
+const icHTML=d=>d.sprite?`<img class="ic-img" src="${d.sprite}" alt="" onerror="this.replaceWith(document.createTextNode('${d.icon}'))">`:d.icon;
+const sx=x=>cam.ox+x*cam.s, sy=y=>cam.oy+y*cam.s;
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function hb(x,y,w,f,col){const h=Math.max(3,cam.s*.1);ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(x,y,w,h);ctx.fillStyle=col;ctx.fillRect(x,y,w*Math.max(0,Math.min(1,f)),h);}
+function label(txt,x,y,size){
+  ctx.font=`700 ${size}px Cinzel,Georgia,serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.8)"; ctx.strokeText(txt,x,y); ctx.fillStyle="#f3e2bd"; ctx.fillText(txt,x,y);
+}
+function drawCity(c,ghost){
+  const s=cam.s,X=sx(c.x),Y=sy(c.y);
+  ctx.fillStyle=c.capital?"#5b4420":"#4b4028"; rr(X+2,Y+2,2*s-4,2*s-4,s*.2); ctx.fill();
+  ctx.strokeStyle=(!ghost&&G.selCity===c)?"#ffd98a":"#b78845"; ctx.lineWidth=Math.max(1.5,s*((!ghost&&G.selCity===c)?.12:.07)); ctx.stroke();
+  drawEmo(c.capital?"🏰":"🏘️",X+s,Y+s*.92,s*1.35);
+  if(ghost) return;
+  label(c.name,X+s,Y-s*.25,Math.max(9,s*.34));
+  label("👥 "+c.pop,X+s,Y+2*s-s*.28,Math.max(8,s*.3));
+  if(c.hp<c.maxhp) hb(X+s*.1,Y+s*.05,s*1.8,c.hp/c.maxhp,"#7bd36f");
+}
+function drawBuilding(b){
+  if(b.type==="cit") return drawCity(b);
+  const s=cam.s,X=sx(b.x),Y=sy(b.y);
+  if(CARRY[b.type]){
+    const node=b.type!=="conv";
+    ctx.fillStyle=node?"#2b211a":"#221d18"; ctx.fillRect(X+1,Y+1,s-2,s-2);
+    ctx.save(); ctx.translate(X+s/2,Y+s/2); ctx.rotate(b.dir*Math.PI/2);
+    ctx.fillStyle="#3a3129"; ctx.fillRect(-s/2+1,-s*.32,s-2,s*.64);
+    ctx.strokeStyle="#c08a3e"; ctx.lineWidth=Math.max(1,s*.07); ctx.lineCap="round"; ctx.lineJoin="round";
+    const ph=(G.t*2.2)%1;
+    for(let i=0;i<2;i++){const px=(((ph+i*.5)%1)-.5)*s*.8; ctx.beginPath(); ctx.moveTo(px-s*.09,-s*.15); ctx.lineTo(px+s*.06,0); ctx.lineTo(px-s*.09,s*.15); ctx.stroke();}
+    ctx.restore();
+    if(node){
+      const sep=b.type==="sepa", dirs=sep?sepaOuts(b):fusionIns(b);
+      const nr=s*.18, fr=s*.44, b0=sep?nr:fr, t0=sep?fr:nr, cxp=X+s/2, cyp=Y+s/2;
+      ctx.strokeStyle=sep?"#f2c86b":"#8fd14f"; ctx.lineWidth=Math.max(1.2,s*.08); ctx.lineCap="round"; ctx.lineJoin="round";
+      for(const d of dirs){
+        const ax=DX[d],ay=DY[d], px=cxp+ax*t0, py=cyp+ay*t0, qx=cxp+ax*b0, qy=cyp+ay*b0;
+        ctx.beginPath(); ctx.moveTo(qx-ay*s*.12,qy+ax*s*.12); ctx.lineTo(px,py); ctx.lineTo(qx+ay*s*.12,qy-ax*s*.12); ctx.stroke();
+      }
+    }
+    if(b.hp<b.maxhp) hb(X+s*.1,Y+s*.05,s*.8,b.hp/b.maxhp,"#7bd36f");
+    return;
+  }
+  const d=BD[b.type];
+  ctx.fillStyle=d.col; rr(X+2,Y+2,s-4,s-4,s*.18); ctx.fill();
+  ctx.strokeStyle=G.buff>0&&b.type!=="tour"?"#ffcf5a":"rgba(0,0,0,.55)"; ctx.lineWidth=G.buff>0&&b.type!=="tour"?2:1; ctx.stroke();
+  drawEmo(art(d),X+s/2,Y+s/2,s*.62);
+  if(b.type!=="tour"){
+    ctx.save(); ctx.translate(X+s/2,Y+s/2); ctx.rotate(b.dir*Math.PI/2);
+    ctx.fillStyle="#f2c86b"; ctx.beginPath(); ctx.moveTo(s*.5,0); ctx.lineTo(s*.34,-s*.12); ctx.lineTo(s*.34,s*.12); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  const r=d.recipe;
+  if(r&&b.craft) hb(X+s*.15,Y+s*.8,s*.7,b.t/r.t,"#c9a6ff");
+  if((b.type==="mine"||b.type==="ferme")&&!b.out) hb(X+s*.15,Y+s*.8,s*.7,b.t/(b.type==="mine"?1.5:2.5),"#f2c86b");
+  if(b.hp<b.maxhp) hb(X+s*.1,Y+s*.05,s*.8,b.hp/b.maxhp,"#7bd36f");
+}
+function drawActor(o,icon,ally,big){
+  const s=cam.s,X=sx(o.x),Y=sy(o.y),r=s*(big?.48:.34);
+  ctx.fillStyle=ally?"rgba(70,120,210,.85)":"rgba(190,50,40,.85)";
+  ctx.beginPath(); ctx.arc(X,Y+r*.25,r,0,7); ctx.fill();
+  drawEmo(icon,X,Y,s*(big?1:.66));
+}
+function ring(wx,wy,r,col,dash){
+  ctx.save(); ctx.strokeStyle=col; ctx.lineWidth=2; if(dash) ctx.setLineDash([6,5]);
+  ctx.beginPath(); ctx.arc(sx(wx),sy(wy),r*cam.s,0,7); ctx.stroke(); ctx.restore();
+}
+function draw(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle="#0f120f"; ctx.fillRect(0,0,VW,VH);
+  if(!G) return;
+  const s=cam.s;
+  ctx.drawImage(ground,cam.ox,cam.oy,W*s,H*s);
+  ctx.drawImage(terrCv,cam.ox,cam.oy,W*s,H*s);
+  for(const l of G.lairs){
+    if(!l.alive) continue;
+    const X=sx(l.x+.5),Y=sy(l.y+.5);
+    ctx.fillStyle="#3b0e0a"; ctx.beginPath(); ctx.arc(X,Y,s*.55,0,7); ctx.fill();
+    ctx.strokeStyle="#c8453a"; ctx.lineWidth=Math.max(1.5,s*.08); ctx.stroke();
+    drawEmo("☠️",X,Y,s*.8);
+    if(l.lvl) label("niv. "+l.lvl,X,Y-s*1.1,Math.max(9,s*.32));
+    if(l.hp<l.maxhp) hb(X-s*.6,Y-s*.85,s*1.2,l.hp/l.maxhp,"#e8675a");
+  }
+  for(const b of G.blds) drawBuilding(b);
+  for(const b of G.blds){
+    if(!b.item) continue;
+    const X=sx(b.x+.5+DX[b.dir]*(b.item.p-.5)),Y=sy(b.y+.5+DY[b.dir]*(b.item.p-.5));
+    ctx.fillStyle=ITEMS[b.item.k].c; ctx.beginPath(); ctx.arc(X,Y,Math.max(2.5,s*.17),0,7); ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.6)"; ctx.lineWidth=1; ctx.stroke();
+  }
+  for(const e of G.enemies){const d=ENEMIES[e.k]; drawActor(e,art(d),false,d.big); if(e.hp<d.hp) hb(sx(e.x)-s*.35,sy(e.y)-s*.6,s*.7,e.hp/d.hp,"#e8675a");}
+  const sa=G.selArmy?armyById(G.selArmy):null;
+  if(sa){
+    ctx.fillStyle="rgba(255,217,138,.35)"; ctx.strokeStyle="#ffd98a"; ctx.lineWidth=2;
+    for(const u of unitsOf(sa)){ctx.beginPath(); ctx.ellipse(sx(u.x),sy(u.y)+s*.3,s*.5,s*.25,0,0,7); ctx.fill(); ctx.stroke();}
+    const us=unitsOf(sa), o=sa.order;
+    if(us.length&&o.type!=="hold"){
+      const c=centroid(us); let dx,dy;
+      if(o.type==="defend"){const p=cc(o.city);dx=p.x;dy=p.y;} else if(o.type==="attack"){dx=o.lair.x+.5;dy=o.lair.y+.5;} else {dx=o.x;dy=o.y;}
+      ctx.save(); ctx.setLineDash([7,6]); ctx.strokeStyle=o.type==="attack"?"#ff6a5a":"#ffd98a"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(sx(c.x),sy(c.y)); ctx.lineTo(sx(dx),sy(dy)); ctx.stroke(); ctx.restore();
+    }
+  }
+  for(const u of G.units){const d=UNITS[u.k]; drawActor(u,art(d),true,d.big); if(u.hp<d.hp) hb(sx(u.x)-s*.35,sy(u.y)-s*(d.big?.8:.6),s*.7,u.hp/d.hp,"#7bd36f");}
+  for(const a of G.armies){
+    if(a.garrison) continue; const us=unitsOf(a); if(!us.length) continue;
+    const c=centroid(us); let top=c.y; us.forEach(u=>top=Math.min(top,u.y));
+    label(`⚑ ${a.short}`,sx(c.x),sy(top)-s*.95,Math.max(10,s*.36));
+  }
+  for(const m of G.marks){const k=m.t/m.max; ctx.globalAlpha=k; ring(m.x,m.y,.3+(1-k)*.9,m.col,false);}
+  ctx.globalAlpha=1;
+  for(const f of G.fx){
+    ctx.globalAlpha=f.t/f.max; ctx.strokeStyle=f.col; ctx.lineWidth=f.w*Math.max(1,s/24);
+    ctx.beginPath(); ctx.moveTo(sx(f.x1),sy(f.y1)); ctx.lineTo(sx(f.x2),sy(f.y2)); ctx.stroke();
+  }
+  for(const bm of G.booms){
+    const k=bm.t/bm.max, R=bm.r*s*(1.2-k*.4);
+    const gr=ctx.createRadialGradient(sx(bm.x),sy(bm.y),0,sx(bm.x),sy(bm.y),R);
+    gr.addColorStop(0,`rgba(255,230,140,${k})`); gr.addColorStop(.5,`rgba(255,120,40,${k*.8})`); gr.addColorStop(1,"rgba(160,30,10,0)");
+    ctx.globalAlpha=1; ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(sx(bm.x),sy(bm.y),R,0,7); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  if(G.sel){const t=G.sel; const b=at(t.x,t.y)?.b; ctx.strokeStyle="#f2c86b"; ctx.lineWidth=2;
+    if(!(b&&b.type==="cit")) ctx.strokeRect(sx(t.x)+1,sy(t.y)+1,s-2,s-2);}
+  if(hover&&hoverIn&&started&&!G.over&&tool!=="hand"&&tool!=="army"){
+    if(tool.startsWith("spell:")){ if(hoverW) ring(hoverW.x,hoverW.y,1.6,"#ffae5a",true); }
+    else if(!at(hover.x,hover.y)){}
+    else if(tool==="del"){ctx.strokeStyle="#e8675a";ctx.lineWidth=2;ctx.strokeRect(sx(hover.x)+1,sy(hover.y)+1,s-2,s-2);}
+    else if(tool==="ville"){
+      const err=canPlace("ville",hover.x,hover.y);
+      ctx.globalAlpha=.6; drawCity({x:hover.x,y:hover.y,capital:false},true); ctx.globalAlpha=1;
+      ctx.strokeStyle=err?"#e8675a":"#86c47f"; ctx.lineWidth=2; ctx.strokeRect(sx(hover.x)+1,sy(hover.y)+1,2*s-2,2*s-2);
+      ring(hover.x+1,hover.y+1,6,err?"#e8675a":"#86c47f",true);
+    }else{
+      const err=canPlace(tool,hover.x,hover.y);
+      ctx.globalAlpha=.6; drawBuilding({type:tool,x:hover.x,y:hover.y,dir:rot,hp:1,maxhp:1,t:0,craft:false,out:1}); ctx.globalAlpha=1;
+      ctx.strokeStyle=err?"#e8675a":"#86c47f"; ctx.lineWidth=2; ctx.strokeRect(sx(hover.x)+1,sy(hover.y)+1,s-2,s-2);
+    }
+  }
+}
+
+/* ---------- Minicarte ---------- */
+const mini=document.getElementById("mini"), mctx=mini.getContext("2d");
+function drawMini(){
+  const w=mini.clientWidth,h=mini.clientHeight; if(!w||!h) return;
+  if(mini.width!==Math.round(w*dpr)){mini.width=Math.round(w*dpr); mini.height=Math.round(h*dpr);}
+  mctx.setTransform(dpr,0,0,dpr,0,0);
+  mctx.drawImage(miniBase,0,0,w,h); mctx.drawImage(terrCv,0,0,w,h);
+  const kx=w/W,ky=h/H;
+  for(const b of G.blds) if(b.type!=="cit"){mctx.fillStyle=b.type==="conv"?"#c08a3e":"#e8dcc4"; mctx.fillRect(b.x*kx,b.y*ky,Math.max(1,kx),Math.max(1,ky));}
+  for(const c of G.cities){mctx.fillStyle=c.capital?"#ffd98a":"#e0b04a"; mctx.fillRect(c.x*kx-1,c.y*ky-1,2*kx+2,2*ky+2);}
+  for(const l of G.lairs) if(l.alive){mctx.fillStyle="#ff4a3a"; mctx.beginPath(); mctx.arc((l.x+.5)*kx,(l.y+.5)*ky,3.5,0,7); mctx.fill();}
+  mctx.fillStyle="#ff6a5a"; for(const e of G.enemies) mctx.fillRect(e.x*kx-1,e.y*ky-1,2,2);
+  mctx.fillStyle="#7fb2ff"; for(const u of G.units) mctx.fillRect(u.x*kx-1,u.y*ky-1,2,2);
+  mctx.strokeStyle="#fff"; mctx.lineWidth=1;
+  mctx.strokeRect((-cam.ox/cam.s)*kx,(-cam.oy/cam.s)*ky,(VW/cam.s)*kx,(VH/cam.s)*ky);
+}
+let miniDrag=false;
+function miniJump(e){const r=mini.getBoundingClientRect(); centerOn((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H); cam.user=true;}
+mini.addEventListener("pointerdown",e=>{if(!started)return; miniDrag=true; mini.setPointerCapture(e.pointerId); miniJump(e);});
+mini.addEventListener("pointermove",e=>{if(miniDrag) miniJump(e);});
+mini.addEventListener("pointerup",()=>miniDrag=false);
+mini.addEventListener("pointercancel",()=>miniDrag=false);
+
+/* ---------- Caméra & saisie ---------- */
+function resize(){
+  const r=view.getBoundingClientRect(); dpr=window.devicePixelRatio||1;
+  VW=Math.max(1,r.width); VH=Math.max(1,r.height);
+  cv.width=Math.round(VW*dpr); cv.height=Math.round(VH*dpr);
+  if(!cam.user) fit();
+}
+function fit(){
+  cam.fitS=Math.min(VW/W,VH/H);
+  cam.s=Math.max(cam.fitS,VW<600?22:26);
+  const c=G.cities[0]||{x:W/2-1,y:H/2-1};
+  centerOn(c.x+1,c.y+1); cam.user=false;
+}
+function centerOn(wx,wy){ cam.ox=VW/2-wx*cam.s; cam.oy=VH/2-wy*cam.s; }
+function zoomAt(px,py,f){
+  const s2=Math.max(cam.fitS*.8,Math.min(90,cam.s*f));
+  cam.ox=px-(px-cam.ox)*s2/cam.s; cam.oy=py-(py-cam.oy)*s2/cam.s; cam.s=s2; cam.user=true;
+}
+const local=e=>{const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+const worldOf=p=>({x:(p.x-cam.ox)/cam.s,y:(p.y-cam.oy)/cam.s});
+const tileOf=p=>{const w=worldOf(p);return{x:Math.floor(w.x),y:Math.floor(w.y)};};
+const ptrs=new Map(); let drag=null,pinch=null;
+
+function act(t,first){
+  if(G.over) return;
+  if(tool==="del"){
+    const tl=at(t.x,t.y);
+    if(tl&&tl.b&&tl.b.type!=="cit"){refund(BD[tl.b.type].cost); removeB(tl.b);}
+    else if(first&&tl&&tl.b) toast("Les villes ne peuvent pas être démolies",true);
+    return;
+  }
+  if(tool==="ville"){
+    if(!first) return;
+    const err=canPlace("ville",t.x,t.y);
+    if(err){toast(err,true);return;}
+    pay(BD.ville.cost); const c=makeCity(t.x,t.y,false); recomputeTerr();
+    G.selCity=c; toast(`${c.name} est fondée !`); setTool("hand"); buildCityPanel(true); updateUI();
+    return;
+  }
+  const err=canPlace(tool,t.x,t.y);
+  if(err){ if(first&&at(t.x,t.y)) toast(err,true); return; }
+  pay(BD[tool].cost); place(tool,t.x,t.y,rot);
+}
+function selectAt(t){
+  const tl=at(t.x,t.y);
+  G.sel=tl?t:null;
+  if(tl&&tl.b&&tl.b.type==="cit"){G.selCity=tl.b; G.sel=null; winMode=null; openWin("city"); return;}
+  updateUI();
+}
+cv.addEventListener("pointerdown",e=>{
+  if(!started) return;
+  cv.setPointerCapture(e.pointerId);
+  const p=local(e); ptrs.set(e.pointerId,p);
+  if(ptrs.size===2){const[a,b]=[...ptrs.values()]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y),mx:(a.x+b.x)/2,my:(a.y+b.y)/2}; drag=null; return;}
+  if(ptrs.size>2) return;
+  if(e.button===1||e.button===2||tool==="hand"||tool==="army"){drag={mode:"pan",sx:p.x,sy:p.y,ox:cam.ox,oy:cam.oy,moved:false,tap:e.button===0};return;}
+  if(tool.startsWith("spell:")){ const w=worldOf(p); if(!G.over&&cast(tool.slice(6),w.x,w.y)) setTool("hand"); drag=null; return; }
+  const t=tileOf(p); drag={mode:"build",last:t}; act(t,true);
+});
+cv.addEventListener("pointermove",e=>{
+  const p=local(e);
+  if(ptrs.has(e.pointerId)) ptrs.set(e.pointerId,p);
+  hover=tileOf(p); hoverW=worldOf(p); hoverIn=true;
+  if(pinch&&ptrs.size===2){
+    const[a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y),mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    if(pinch.d>0) zoomAt(mx,my,d/pinch.d);
+    cam.ox+=mx-pinch.mx; cam.oy+=my-pinch.my; pinch={d,mx,my}; return;
+  }
+  if(!drag) return;
+  if(drag.mode==="pan"){
+    const dx=p.x-drag.sx,dy=p.y-drag.sy;
+    if(Math.hypot(dx,dy)>6) drag.moved=true;
+    if(drag.moved){cam.ox=drag.ox+dx; cam.oy=drag.oy+dy; cam.user=true;}
+    return;
+  }
+  const t=hover; let l=drag.last, guard=0;
+  while((l.x!==t.x||l.y!==t.y)&&guard++<200){
+    const n=l.x!==t.x?{x:l.x+Math.sign(t.x-l.x),y:l.y}:{x:l.x,y:l.y+Math.sign(t.y-l.y)};
+    if(tool==="conv"){
+      const dir=n.x>l.x?0:n.y>l.y?1:n.x<l.x?2:3; rot=dir; updateHint();
+      const lt=at(l.x,l.y); if(lt&&lt.b&&lt.b.type==="conv") lt.b.dir=dir;
+    }
+    act(n,false); l=n;
+  }
+  drag.last=l;
+});
+function up(e){
+  if(drag&&drag.mode==="pan"&&!drag.moved&&drag.tap&&!G.over){
+    const w=worldOf(local(e)), u=unitAt(w);
+    if(tool==="hand"){ if(u) selectArmy(armyById(u.army)); else selectAt(tileOf(local(e))); }
+    else if(tool==="army"){ const a=armyById(G.selArmy);
+      if(u&&u.army!==G.selArmy) selectArmy(armyById(u.army)); else if(a) giveOrder(a,w.x,w.y); }
+  }
+  ptrs.delete(e.pointerId); if(ptrs.size<2) pinch=null; if(ptrs.size===0) drag=null;
+}
+cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+cv.addEventListener("pointerleave",()=>{hoverIn=false;});
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+cv.addEventListener("wheel",e=>{e.preventDefault(); const p=local(e); zoomAt(p.x,p.y,Math.exp(-e.deltaY*.0015));},{passive:false});
+const panKeys=new Set();
+window.addEventListener("keyup",e=>panKeys.delete(e.key));
+window.addEventListener("blur",()=>panKeys.clear());
+window.addEventListener("keydown",e=>{
+  if(e.key.startsWith("Arrow")){ e.preventDefault(); panKeys.add(e.key); return; }
+  if(!started||$("modal").classList.contains("show")) return;
+  const k=e.key.toLowerCase();
+  if(k==="v"){openWin("city");return;}
+  if(k==="m"){openWin("magic");return;}
+  if(k==="a"){openWin("army");return;}
+  if(winMode){ if(k==="escape") closeWin(); return; }
+  if(k==="r"){rot=(rot+1)%4; updateHint(); buildTools();}
+  else if(k==="escape"||k==="q"){setTool("hand");}
+  else if(k==="x"){setTool("del");}
+  else if(k===" "){e.preventDefault(); togglePause();}
+  else if(/^[0-9]$/.test(k)){const tl=TOOLS[(+k+9)%10]; if(tl) setTool(tl[0]);}
+});
+new ResizeObserver(resize).observe(view);
+$("bFit").onclick=()=>fit();
+
+/* ---------- Interface ---------- */
+const ARROWS=["→","↓","←","↑"];
+const TOOLS=[["hand","✋","Main"],["conv"],["sepa"],["fusion"],["mine"],["ferme"],["fonderie"],["forge"],["enchant"],["tour"],["ville"],["del","🗑️","Démolir"]];
+const costHTML=c=>Object.entries(c).map(([k,v])=>`<span class="chip"><span class="dot" style="background:${ITEMS[k].c}"></span>${v}</span>`).join("");
+function buildTools(){
+  const el=$("tools"); el.innerHTML="";
+  TOOLS.forEach(([k,ic,nm],i)=>{
+    const d=BD[k]; const b=document.createElement("button");
+    b.className="tool"+(tool===k?" on":"")+(d&&d.req&&!has(d.req)?" locked":"");
+    b.dataset.k=k;
+    b.innerHTML=`<span class="ic">${d?icHTML(d):ic}</span><span class="nm">${d?(k==="ville"?"Ville":d.n):nm}</span>`+(d?`<span class="costs">${costHTML(d.cost)}</span>`:`<span class="key">${k==="del"?"touche X":"touche 1"}</span>`);
+    b.title=d?d.desc:nm;
+    b.onclick=()=>setTool(k);
+    el.appendChild(b);
+  });
+  const r=document.createElement("button"); r.className="tool";
+  r.innerHTML=`<span class="ic">↻</span><span class="nm">Tourner</span><span class="key">${ARROWS[rot]} · touche R</span>`;
+  r.onclick=()=>{rot=(rot+1)%4; updateHint(); buildTools();};
+  el.appendChild(r);
+  refreshToolAfford();
+}
+function refreshToolAfford(){
+  document.querySelectorAll(".tool[data-k]").forEach(b=>{const d=BD[b.dataset.k]; if(d) b.classList.toggle("poor",!canAfford(d.cost));});
+}
+function setTool(k){ tool=k; if(k!=="army") G.selArmy=null; buildTools(); updateHint(); }
+function updateHint(){
+  const h=$("hint");
+  if(tool==="hand") h.textContent="✋ Glisse pour déplacer la vue. Touche une unité pour sélectionner son armée, une ville pour ouvrir sa fenêtre, ou un bâtiment pour l'inspecter. Molette ou pincement pour zoomer.";
+  else if(tool==="del") h.textContent="🗑️ Touche un bâtiment pour le démolir (coût remboursé).";
+  else if(tool.startsWith("spell:")){const s=SPELLS[tool.slice(6)]; h.textContent=`${s.icon} ${s.n} : choisis une cible sur la carte. Échap pour annuler.`;}
+  else if(tool==="army"){const a=armyById(G.selArmy); if(!a){h.textContent="";return;}
+    h.textContent=`⚑ ${capF(a.name)} : touche un lieu pour y marcher, un repaire ☠️ pour l'attaquer ou une ville pour la défendre.`+(a.garrison?" Les unités quitteront la garnison pour former une armée.":"")+" Échap pour désélectionner.";}
+  else if(tool==="ville") h.textContent="🏘️ Choisis l'emplacement de la nouvelle ville. Le cercle montre son territoire de départ.";
+  else h.textContent=`${BD[tool].icon} ${BD[tool].n} ${ARROWS[rot]} · ${BD[tool].desc}`;
+}
+function selInfo(){
+  const s=G.sel; if(!s) return "Avec l'outil ✋, touche une ville ou un bâtiment pour voir son contenu.";
+  const t=at(s.x,s.y); if(!t) return "";
+  if(t.lair) return `<b>Repaire de monstres</b> (niveau ${t.lair.lvl})<br>PV ${Math.ceil(t.lair.hp)} / ${t.lair.maxhp}<br>À chaque vague, il gagne un niveau : plus de PV, plus de gardiens, et il se soigne. Plus tu attends, plus il coûte cher à raser.<br>Envoie ton armée en mode Attaquer ou lance une boule de feu pour récupérer son trésor.`;
+  const b=t.b;
+  if(!b) return (t.dep?`<b>Gisement : ${ITEMS[t.dep].n}</b><br>Pose un extracteur dessus.`:"Case vide.")+(G.terr[s.y][s.x]?"":"<br>Hors de ton territoire.");
+  if(b.type==="cit") return `<b>${b.name}</b>${b.capital?" (capitale)":""}<br>Reçoit ce que les convoyeurs y déposent : la nourriture remplit son grenier, le reste rejoint le stock du royaume.`;
+  const d=BD[b.type]; let h=`<b>${d.n}</b> ${b.type!=="tour"?ARROWS[b.dir]:""}<br>PV ${Math.ceil(b.hp)} / ${b.maxhp}<br>`;
+  if(CARRY[b.type]){
+    h+=b.item?`Transporte : ${ITEMS[b.item.k].n}`:"Vide";
+    if(b.type==="sepa") h+="<br>Entre par l'arrière, ressort à tour de rôle devant, à gauche et à droite.";
+    if(b.type==="fusion") h+="<br>Prend à tour de rôle derrière, à gauche et à droite, et sort devant.";
+  }
+  else if(b.type==="mine") h+=`Extrait : ${ITEMS[t.dep].n}${b.out?"<br>Bloqué : rien ne reçoit la sortie":""}`;
+  else if(b.type==="ferme") h+=`Produit de la nourriture${b.out?"<br>Bloqué : rien ne reçoit la sortie":""}`;
+  else if(d.recipe){
+    const r=d.recipe;
+    h+=`Recette : ${d.desc}<br>Entrées : ${Object.keys(r.in).map(k=>`${ITEMS[k].s} ${b.inb[k]||0}`).join(", ")}<br>Sortie en attente : ${b.out}${b.craft?`<br>Fabrication ${Math.floor(b.t/r.t*100)} %`:""}`;
+  } else h+=d.desc;
+  return h;
+}
+let lastHead="",lastInfra="",lastSel="",lastGar="",lastAL="",lastGL="";
+function garrisonHTML(){
+  const c=G.selCity, us=unitsOf(garrisonOf(c));
+  if(!us.length) return `<p class="muted">Aucune unité en garnison. Les créatures invoquées ici rejoignent la garnison et défendent ${c.name}.</p>`;
+  const cnt={}; us.forEach(u=>cnt[u.k]=(cnt[u.k]||0)+1);
+  let tot=0, h=`<p class="muted">Choisis les unités qui partiront avec la nouvelle armée. Les autres restent défendre ${c.name}.</p>`;
+  for(const [k,n] of Object.entries(cnt)){
+    const v=Math.min(G.form[k]||0,n); G.form[k]=v; tot+=v;
+    h+=`<div class="step"><span class="nm">${UNITS[k].icon} ${UNITS[k].n}</span><button data-st="${k}" data-d="-1" aria-label="Moins"${v?"":" disabled"}>−</button><b>${v} / ${n}</b><button data-st="${k}" data-d="1" aria-label="Plus"${v<n?"":" disabled"}>+</button></div>`;
+  }
+  h+=`<div class="gform"><button class="go2" data-form="sel"${tot?"":" disabled"}>⚑ Former une armée (${tot})</button><button data-form="all">Toute la garnison (${us.length})</button></div>`;
+  return h;
+}
+$("garrison").addEventListener("click",e=>{
+  const st=e.target.closest("[data-st]");
+  if(st){const k=st.dataset.st; G.form[k]=Math.max(0,(G.form[k]||0)+ +st.dataset.d); buildCityPanel(true); return;}
+  const f=e.target.closest("[data-form]"); if(!f) return;
+  const us=unitsOf(garrisonOf(G.selCity)); let pick;
+  if(f.dataset.form==="all") pick=us;
+  else{const left={...G.form}; pick=us.filter(u=>left[u.k]>0&&left[u.k]--);}
+  if(!pick.length) return;
+  const a=formArmy(pick); G.form={}; closeWin(); selectArmy(a,true);
+  toast(`La ${a.name} est formée : touche la carte pour lui donner un ordre`);
+});
+function armyListHTML(){
+  const field=G.armies.filter(a=>!a.garrison&&unitsOf(a).length);
+  if(!field.length) return `<p class="muted">Aucune armée pour l'instant. Forme-en une à partir d'une garnison, ci-dessous ou dans la fenêtre Ville.</p>`;
+  return field.map(a=>{const us=unitsOf(a);
+    return `<div class="acard${G.selArmy===a.id?" sel":""}"><span class="t">⚑ ${capF(a.name)}</span><span class="muted">${orderText(a)}, ${us.length} unité${us.length>1?"s":""}</span><span class="comp">${compHTML(us)}</span>
+    <div class="acts"><button class="go2" data-act="sel" data-id="${a.id}">📍 Donner un ordre</button>
+    <select data-def="${a.id}" aria-label="Défendre une ville"><option value="">🛡️ Défendre…</option>${G.cities.map((c,i)=>`<option value="${i}">${c.name}</option>`).join("")}</select>
+    <button data-act="dis" data-id="${a.id}">Dissoudre</button></div></div>`;}).join("");
+}
+function garListHTML(){
+  return G.cities.map((c,i)=>{const us=unitsOf(garrisonOf(c));
+    return `<div class="acard"><span class="t">${c.capital?"🏰":"🏘️"} ${c.name}</span><span class="comp">${us.length?compHTML(us):'<span class="muted">Aucune unité</span>'}</span>
+    <div class="acts"><button data-act="gform" data-city="${i}"${us.length?"":" disabled"}>⚑ Former une armée</button></div></div>`;}).join("");
+}
+$("wArmy").addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]"); if(!b) return;
+  const act=b.dataset.act;
+  if(act==="sel"){closeWin(); selectArmy(armyById(+b.dataset.id),true);}
+  else if(act==="dis") dissolve(armyById(+b.dataset.id));
+  else if(act==="gform"){G.selCity=G.cities[+b.dataset.city]; openWin("city");}
+});
+$("wArmy").addEventListener("change",e=>{
+  const sel=e.target.closest("select[data-def]"); if(!sel||sel.value==="") return;
+  const a=armyById(+sel.dataset.def), c=G.cities[+sel.value];
+  if(a&&c){a.order={type:"defend",city:c}; toast(`${capF(a.name)} : défend ${c.name}`);}
+  lastAL=""; updateUI();
+});
+function buildCityPanel(force){
+  const c=G.selCity;
+  const head=`<div class="cities">${G.cities.map((q,i)=>`<button class="cchip${q===c?" on":""}" data-city="${i}">${q.capital?"🏰":"🏘️"} ${q.name} · ${q.pop}</button>`).join("")}</div>`;
+  if(force||head!==lastHead){$("cityHead").innerHTML=head; lastHead=head;}
+  const infra=Object.entries(INFRA).map(([k,d])=>{
+    if(c.infra[k]) return `<div class="done"><span class="ic">${icHTML(d)}</span><span>${d.n} construit</span></div>`;
+    const popOk=c.pop>=d.pop, dis=!popOk||!canAfford(d.cost);
+    return `<button class="big row" data-infra="${k}"${dis?" disabled":""}><span class="ic">${icHTML(d)}</span><span class="t">${d.n}</span><span class="st">${d.desc}</span>${popOk?`<span class="costs">${costHTML(d.cost)}</span>`:`<span class="req">Population ${d.pop} requise</span>`}</button>`;
+  }).join("");
+  if(force||infra!==lastInfra){$("cityInfra").innerHTML=infra; lastInfra=infra;}
+  const gar=garrisonHTML();
+  if(force||gar!==lastGar){$("garrison").innerHTML=gar; lastGar=gar;}
+}
+$("cityHead").addEventListener("click",e=>{const b=e.target.closest("[data-city]"); if(!b)return; G.selCity=G.cities[+b.dataset.city]; buildCityPanel(true); updateUI();});
+$("cityInfra").addEventListener("click",e=>{const b=e.target.closest("[data-infra]"); if(b) buildInfra(b.dataset.infra);});
+function buildStatic(){
+  $("stock").innerHTML=STOCK_KEYS.map(k=>`<span class="chip" title="${ITEMS[k].n}"><span class="dot" style="background:${ITEMS[k].c}"></span>${ITEMS[k].s} <b id="st_${k}">0</b></span>`).join("")
+    +`<span class="chip" title="Nourriture dans les greniers de toutes tes villes"><span class="dot" style="background:${ITEMS.nourriture.c}"></span>Nourriture <b id="st_food">0</b></span>`
+    +`<span class="chip" title="Population totale du royaume">👥 Population <b id="st_popu">0</b></span>`
+    +`<span class="chip pmchip" title="Puissance magique">✦ Magie <b id="st_pm">0</b></span>`;
+  $("summons").innerHTML=Object.entries(UNITS).map(([k,d])=>`<button class="big row" id="su_${k}"><span class="ic">${icHTML(d)}</span><span class="t">${d.n}</span><span class="st">PV ${d.hp}, attaque ${d.atk}${d.range>1?", à distance":""}${d.req?`, nécessite ${INFRA[d.req].n.toLowerCase()}`:""}</span><span class="costs">${costHTML(d.cost)}</span></button>`).join("");
+  Object.keys(UNITS).forEach(k=>$("su_"+k).onclick=()=>summon(k));
+  $("spells").innerHTML=Object.entries(SPELLS).map(([k,d])=>`<button class="big row" id="sp_${k}"><span class="ic">${icHTML(d)}</span><span class="t">${d.n}</span><span class="st">${d.desc}</span><span class="costs"><span class="chip pmchip">✦ ${d.pm}</span></span></button>`).join("");
+  Object.keys(SPELLS).forEach(k=>$("sp_"+k).onclick=()=>spellClick(k));
+  $("bCity").onclick=()=>openWin("city");
+  $("bMagic").onclick=()=>openWin("magic");
+  $("wX").onclick=closeWin;
+  $("win").addEventListener("click",e=>{if(e.target===$("win")) closeWin();});
+  $("inspX").onclick=()=>{G.sel=null; updateUI();};
+  $("bArmy").onclick=()=>openWin("army");
+  $("bPause").onclick=togglePause;
+  $("bSave").onclick=saveGame;
+  $("bLoad").onclick=()=>{
+    if(!hasSave()){toast("Aucune sauvegarde",true);return;}
+    const was=G.paused; G.paused=true; syncPause();
+    showModal(`<h2>Charger la sauvegarde</h2><p>La partie en cours sera perdue. Continuer ?</p>`,
+      "Charger",loadGame,"Annuler",()=>{G.paused=was; syncPause();});
+  };
+  $("bSpeed").onclick=()=>{G.speed=G.speed===1?2:1; $("bSpeed").textContent="×"+G.speed;};
+  $("bHelp").onclick=()=>{const was=G.paused; G.paused=true; showModal(HELP,"Reprendre",()=>{G.paused=was; syncPause();});};
+}
+let winMode=null;
+function openWin(m){
+  if(winMode===m){closeWin();return;}
+  winMode=m;
+  $("wCity").hidden=m!=="city"; $("wMagic").hidden=m!=="magic"; $("wArmy").hidden=m!=="army";
+  $("wcard").classList.toggle("magic",m==="magic");
+  $("win").classList.add("show");
+  $("bCity").classList.toggle("open",m==="city"); $("bMagic").classList.toggle("open",m==="magic"); $("bArmy").classList.toggle("open",m==="army");
+  if(m==="city"){G.form={}; buildCityPanel(true);}
+  if(m==="army"){lastAL=lastGL="";}
+  updateUI();
+  $("wX").focus();
+}
+function closeWin(){
+  winMode=null; $("win").classList.remove("show");
+  $("bCity").classList.remove("open"); $("bMagic").classList.remove("open"); $("bArmy").classList.remove("open");
+}
+function togglePause(){G.paused=!G.paused; syncPause(); toast(G.paused?"Pause":"Reprise");}
+function syncPause(){$("bPause").textContent=G.paused?"▶":"⏸";}
+function updateUI(){
+  for(const k of STOCK_KEYS) $("st_"+k).textContent=G.stock[k];
+  $("st_pm").textContent=Math.floor(G.pm);
+  $("st_food").textContent=G.cities.reduce((a,q)=>a+q.food,0);
+  $("st_popu").textContent=G.cities.reduce((a,q)=>a+q.pop,0);
+  const c=G.selCity;
+  $("cityTitle").textContent=c.name+(c.capital?" (capitale)":"");
+  $("cityHp").style.width=(c.hp/c.maxhp*100)+"%";
+  $("cityFood").style.width=(c.pop>=MAX_POP?100:c.food/foodNeed(c)*100)+"%";
+  $("cityStats").textContent=`${Math.ceil(c.hp)} / ${c.maxhp} PV. Population ${c.pop} / ${MAX_POP}, territoire de ${cityR(c)} cases. `+(c.pop>=MAX_POP?"Population maximale.":`Grenier ${c.food} / ${foodNeed(c)} nourriture pour grandir.`);
+  buildCityPanel(false);
+  $("pmBar").style.width=(G.pm/200*100)+"%";
+  $("pmTxt").textContent=`Puissance magique ${Math.floor(G.pm)} / 200, +${fmt(pmRate())} par seconde grâce à la population et aux tours de mage.`+(G.buff>0?` Ardeur des forges : ${Math.ceil(G.buff)} s.`:"");
+  for(const [k,d] of Object.entries(SPELLS)) $("sp_"+k).disabled=G.pm<d.pm;
+  $("sumWhere").textContent=`Les créatures invoquées rejoignent la garnison ${deN(c.name)}.`;
+  for(const [k,d] of Object.entries(UNITS)) $("su_"+k).disabled=(d.req&&!has(d.req))||!canAfford(d.cost);
+  if(winMode==="army"){
+    const al=armyListHTML(); if(al!==lastAL){$("armyList").innerHTML=al; lastAL=al;}
+    const gl=garListHTML(); if(gl!==lastGL){$("garList").innerHTML=gl; lastGL=gl;}
+  }
+  const nf=G.armies.filter(a=>!a.garrison&&unitsOf(a).length).length;
+  $("armyKey").textContent=`${nf} armée${nf>1?"s":""}`;
+  const alive=G.lairs.filter(l=>l.alive).length;
+  $("lairTxt").textContent=alive;
+  const nw=Math.max(0,Math.ceil(G.nextWave));
+  $("waveTxt").textContent=alive?`${Math.floor(nw/60)}:${String(nw%60).padStart(2,"0")}`:"—";
+  $("insp").hidden=!G.sel;
+  if(G.sel){const si=selInfo(); if(si!==lastSel){$("selTxt").innerHTML=si; lastSel=si;}}
+  $("pmKey").textContent=`${Math.floor(G.pm)} ✦`;
+  refreshToolAfford();
+}
+let toastT=0;
+function toast(msg,bad){const t=$("toast"); t.textContent=msg; t.className="show"+(bad?" bad":""); toastT=2.8;}
+function showModal(html,btn,cb,alt,cb2){
+  $("modalCard").innerHTML=html+`<button class="go" id="mGo">${btn}</button>`+(alt?`<button class="go alt" id="mAlt">${alt}</button>`:"");
+  $("modal").classList.add("show");
+  $("mGo").onclick=()=>{$("modal").classList.remove("show"); cb&&cb();};
+  if(alt) $("mAlt").onclick=()=>{$("modal").classList.remove("show"); cb2&&cb2();};
+  $("mGo").focus();
+}
+
+/* ---------- Sauvegarde ---------- */
+const SAVE_KEY="magicomation.save.v1";
+function serialize(){
+  const li=new Map(); G.lairs.forEach((l,i)=>li.set(l,i));
+  const ci=new Map(); G.cities.forEach((c,i)=>ci.set(c,i));
+  const deps=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const d=G.tiles[y][x].dep; if(d) deps.push([x,y,d]);}
+  const ord=o=>{
+    if(o.type==="defend"){const i=ci.get(o.city); return i==null?{type:"hold",x:o.city.x+1,y:o.city.y+1}:{type:"defend",c:i};}
+    if(o.type==="attack"){const i=li.get(o.lair); return i==null?{type:"hold",x:o.lair.x+.5,y:o.lair.y+.5}:{type:"attack",l:i};}
+    return {type:o.type,x:o.x,y:o.y};
+  };
+  return {
+    v:1,seed:G.seed,t:G.t,speed:G.speed,stock:G.stock,pm:G.pm,buff:G.buff,
+    nextWave:G.nextWave,wave:G.wave,kills:G.kills,nameI:G.nameI,armyN:G.armyN,fieldN:G.fieldN,
+    selCity:ci.get(G.selCity)??0,deps,
+    lairs:G.lairs.map(l=>({x:l.x,y:l.y,hp:l.hp,maxhp:l.maxhp,alive:l.alive,g1:l.g1,g2:l.g2,lvl:l.lvl||0})),
+    blds:G.blds.map(b=>b.type==="cit"
+      ?{t:"cit",x:b.x,y:b.y,capital:b.capital,name:b.name,pop:b.pop,food:b.food,infra:b.infra,hp:b.hp,maxhp:b.maxhp}
+      :{t:b.type,x:b.x,y:b.y,dir:b.dir,hp:b.hp,tm:b.t,out:b.out,inb:b.inb,craft:b.craft,rr:b.rr||0,item:b.item?{k:b.item.k,p:b.item.p}:null}),
+    armies:G.armies.map(a=>({id:a.id,g:a.garrison,c:a.city?ci.get(a.city):null,name:a.name,short:a.short||null,had:a.had,order:ord(a.order)})),
+    units:G.units.map(u=>({k:u.k,x:u.x,y:u.y,hp:u.hp,cd:u.cd,army:u.army})),
+    enemies:G.enemies.map(e=>({k:e.k,x:e.x,y:e.y,hp:e.hp,cd:e.cd})),
+  };
+}
+function deserialize(s){
+  if(!s||s.v!==1) throw new Error("version");
+  const g={t:s.t,speed:s.speed||1,paused:true,over:false,tiles:[],blds:[],units:[],enemies:[],lairs:[],fx:[],booms:[],cities:[],
+    stock:s.stock,pm:s.pm,buff:s.buff,nextWave:s.nextWave,wave:s.wave,kills:s.kills,sel:null,selCity:null,nameI:s.nameI,terr:null,
+    armies:[],armyN:s.armyN,fieldN:s.fieldN,selArmy:null,marks:[],form:{},seed:s.seed|0};
+  for(let y=0;y<H;y++){g.tiles[y]=[];for(let x=0;x<W;x++)g.tiles[y][x]={dep:null,b:null,lair:null};}
+  for(const [x,y,d] of s.deps) g.tiles[y][x].dep=d;
+  for(const l of s.lairs){
+    const o={x:l.x,y:l.y,hp:l.hp,maxhp:l.maxhp,alive:l.alive,g1:l.g1,g2:l.g2,lvl:l.lvl||0};
+    g.lairs.push(o); if(o.alive) g.tiles[o.y][o.x].lair=o;
+  }
+  for(const b of s.blds){
+    if(b.t==="cit"){
+      const c={type:"cit",x:b.x,y:b.y,capital:b.capital,name:b.name,pop:b.pop,food:b.food,infra:b.infra||{},hp:b.hp,maxhp:b.maxhp,cd:0};
+      for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)g.tiles[c.y+dy][c.x+dx].b=c;
+      g.cities.push(c); g.blds.push(c);
+    }else{
+      if(!BD[b.t]) continue;
+      const o={type:b.t,x:b.x,y:b.y,dir:b.dir,hp:b.hp,maxhp:BD[b.t].hp,t:b.tm||0,cd:0,
+        item:b.item?{k:b.item.k,p:b.item.p}:null,out:b.out===undefined?0:b.out,inb:b.inb||{},craft:!!b.craft,rr:b.rr||0};
+      g.tiles[o.y][o.x].b=o; g.blds.push(o);
+    }
+  }
+  if(!g.cities.length) throw new Error("aucune ville");
+  g.selCity=g.cities[s.selCity]||g.cities[0];
+  for(const a of s.armies){
+    const o={id:a.id,garrison:!!a.g,city:a.c!=null?g.cities[a.c]:null,name:a.name,had:!!a.had};
+    if(a.short) o.short=a.short;
+    const q=a.order, tc=q.type==="defend"?g.cities[q.c]:null, tl=q.type==="attack"?g.lairs[q.l]:null;
+    o.order=tc?{type:"defend",city:tc}:tl?{type:"attack",lair:tl}
+      :{type:(q.type==="defend"||q.type==="attack")?"hold":q.type,x:q.x||0,y:q.y||0};
+    if(o.garrison&&!o.city) continue;
+    g.armies.push(o);
+  }
+  for(const c of g.cities) if(!g.armies.some(a=>a.garrison&&a.city===c))
+    g.armies.push({id:++g.armyN,garrison:true,city:c,name:`garnison ${deN(c.name)}`,had:false,order:{type:"defend",city:c}});
+  const ids=new Set(g.armies.map(a=>a.id));
+  const home=g.armies.find(a=>a.garrison&&a.city===g.cities[0]);
+  for(const u of s.units) g.units.push({k:u.k,x:u.x,y:u.y,hp:u.hp,cd:u.cd,army:ids.has(u.army)?u.army:home.id});
+  for(const e of s.enemies||[]) g.enemies.push({k:e.k,x:e.x,y:e.y,hp:e.hp,cd:e.cd});
+  return g;
+}
+const hasSave=()=>{try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}};
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY,JSON.stringify(serialize()));
+    toast("Partie sauvegard\u00e9e");
+  }catch(err){
+    toast(err&&err.name==="QuotaExceededError"?"Sauvegarde impossible : espace insuffisant":"Sauvegarde impossible : stockage indisponible",true);
+  }
+}
+function loadGame(){
+  let raw=null; try{raw=localStorage.getItem(SAVE_KEY);}catch(e){}
+  if(!raw){toast("Aucune sauvegarde",true);return;}
+  let g; try{ g=deserialize(JSON.parse(raw)); }catch(err){ toast("Sauvegarde illisible",true); return; }
+  G=g; buildGround(); recomputeTerr(); rebuildGrids();
+  closeWin(); setTool("hand"); fit(); buildCityPanel(true); syncPause();
+  $("bSpeed").textContent="\u00d7"+G.speed; updateUI();
+  toast("Partie charg\u00e9e \u2014 le jeu est en pause");
+}
+const HELP=`<h2>Magicomation</h2>
+<p>Bâtis une chaîne de production, fais grandir tes villes, invoque une armée de créatures et détruis les trois repaires ☠️ avant d'être submergé. Toutes les 10 minutes, une vague de monstres sort des repaires et marche sur la ville la plus proche. Si ta capitale Arcanum tombe, la partie est perdue.</p>
+<h3>Premiers pas</h3>
+<ol>
+<li>Pose des extracteurs ⛏️ sur les gisements de fer (brun) et de pierre (gris), et relie-les à Arcanum 🏰 avec des convoyeurs.</li>
+<li>Fais passer le fer dans une fonderie 🔥 pour obtenir des lingots, puis dans une forge ⚒️ pour des armes.</li>
+<li>Construis des fermes 🌾 et envoie la nourriture à une ville : elle grandit, son territoire s'étend et elle débloque des infrastructures.</li>
+<li>Le cristal (bleu) et le mana (orange) sont loin : fais grandir Arcanum ou fonde une nouvelle ville 🏘️ près des gisements.</li>
+<li>Construis une académie arcane 📜 pour débloquer l'enchanteur 🔮 et invoquer des dragons.</li>
+</ol>
+<h3>Villes et magie</h3>
+<ul>
+<li>Tu ne peux construire que dans ton territoire, la zone claire autour de tes villes.</li>
+<li>Le bouton Ville 🏰 (touche V) ouvre la ville sélectionnée : constructions, invocations et garnison. Toucher une ville sur la carte l'ouvre aussi.</li>
+<li>Chaque ville a ses propres constructions : remparts, temple, tour de mage, académie.</li>
+<li>Le bouton Magie ✦ (touche M) affiche tes sorts. La population et les tours de mage produisent la puissance magique qui les alimente.</li>
+<li>Les créatures apparaissent dans la ville sélectionnée, et le mode Défendre protège cette ville.</li>
+</ul>
+<h3>Armées</h3>
+<ul>
+<li>Les créatures invoquées rejoignent la garnison de leur ville et la défendent.</li>
+<li>Dans la fenêtre Ville, choisis des unités de la garnison et forme une armée. Le bouton Armées ⚔️ (touche A) liste toutes tes armées.</li>
+<li>Touche une unité sur la carte pour sélectionner son armée, puis touche un lieu pour y marcher, un repaire pour l'attaquer ou une ville pour la défendre.</li>
+</ul>
+<h3>Contrôles</h3>
+<ul>
+<li>Clic ou toucher pour construire, glisser pour tracer une ligne de convoyeurs.</li>
+<li>R ou ↻ pour tourner. La flèche dorée montre où sort la production.</li>
+<li>✋, clic droit ou flèches du clavier pour déplacer la vue, molette ou pincement pour zoomer. La minicarte en bas à droite permet de sauter n'importe où, et ⤢ recentre sur la capitale.</li>
+<li>🗑️ pour démolir, le coût est remboursé. Espace pour la pause, Échap pour revenir à ✋.</li>
+<li>Les touches 1 à 0 choisissent les dix premiers outils, de ✋ à 🏹.</li>
+<li>💾 sauvegarde la partie dans le navigateur, 📂 la recharge.</li>
+</ul>
+<h3>Répartir les flux</h3>
+<ul>
+<li>Le séparateur 🔱 reçoit par l'arrière et envoie à tour de rôle devant, à gauche et à droite : une fonderie peut ainsi nourrir trois forges.</li>
+<li>Le fusionneur 🔀 fait l'inverse : il prend à tour de rôle sur ses trois autres côtés et sort devant, sans qu'une ligne affame les autres.</li>
+<li>Les flèches dorées d'un séparateur montrent ses sorties, les vertes d'un fusionneur ses entrées.</li>
+</ul>
+<h3>Les repaires grandissent</h3>
+<p>À chaque vague, les repaires encore debout gagnent un niveau : plus de PV, plus de gardiens, et ils se soignent. Attendre pour attaquer coûte donc de plus en plus cher.</p>`;
+
+/* ---------- Boucle ---------- */
+let last=performance.now(), uiAcc=0;
+function frame(now){
+  const real=Math.min(.05,(now-last)/1000); last=now;
+  if(started&&!G.paused&&!G.over){
+    const dt=real*G.speed; G.t+=dt;
+    rebuildGrids();
+    stepBuildings(dt); stepCities(dt); stepUnits(dt); stepWaves(dt);
+  }
+  G.fx.forEach(f=>f.t-=real); G.fx=G.fx.filter(f=>f.t>0);
+  G.booms.forEach(f=>f.t-=real); G.booms=G.booms.filter(f=>f.t>0);
+  G.marks.forEach(f=>f.t-=real); G.marks=G.marks.filter(f=>f.t>0);
+  if(toastT>0){toastT-=real; if(toastT<=0) $("toast").className="";}
+  if(panKeys.size){ const v=700*real;
+    if(panKeys.has("ArrowLeft")) cam.ox+=v; if(panKeys.has("ArrowRight")) cam.ox-=v;
+    if(panKeys.has("ArrowUp")) cam.oy+=v; if(panKeys.has("ArrowDown")) cam.oy-=v; cam.user=true; }
+  draw(); drawMini();
+  uiAcc+=real; if(uiAcc>.2){uiAcc=0; updateUI();}
+  requestAnimationFrame(frame);
+}
+
+newGame(); buildStatic(); buildTools(); updateHint(); resize(); buildCityPanel(true); updateUI();
+if(hasSave()) showModal(HELP,"Nouvelle partie",()=>{started=true;},"Reprendre la sauvegarde",()=>{started=true; loadGame();});
+else showModal(HELP,"Commencer",()=>{started=true;});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
